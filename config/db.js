@@ -1,5 +1,3 @@
-// backend/config/db.js
-
 import 'dotenv/config';
 import { Sequelize } from 'sequelize';
 
@@ -20,7 +18,7 @@ const sequelize = new Sequelize(
 import defineEvento from '../models/Event.js';
 import defineObjetivo from '../models/Objetivo.js';
 import defineUser from '../models/User.js';
-import defineAlumno from '../models/Alumno.js'; 
+import defineRole from '../models/Roles.js';
 import defineCategory from '../models/Category.js';
 import defineLocation from '../models/Location.js';
 import defineResultado from '../models/Resultado.js';
@@ -33,26 +31,50 @@ import defineEventoRecurso from '../models/EventoRecurso.js';
 import defineEventoTipo from '../models/EventoTipo.js';
 import defineArgumentacion from '../models/Argumentacion.js';
 import defineEventoObjetivo from '../models/EventoObjetivo.js';
+import defineNotificacion from '../models/Notificacion.js';
 
+import defineAdministrador from '../models/Administrador.js';
+import defineAdmisiones from '../models/Admisiones.js';
+import defineAlumno from '../models/Alumno.js'; 
+import defineComunicacion from '../models/Comunicacion.js';
+import defineDaf from '../models/Daf.js';
+import defineAcademico  from '../models/Academico.js';
+import defineEstudiantes from '../models/Estudiante.js';
+import defineExterno from '../models/Estudiante.js';
+import defineTi from '../models/Ti.js';
+import defineServicios from '../models/ServiciosEstudiantiles.js';
+import defineFacultad from '../models/Facultad.js';
 
 
 const Evento = defineEvento(sequelize);
 const Objetivo = defineObjetivo(sequelize);
 const User = defineUser(sequelize);
-const Argumentacion = defineArgumentacion(sequelize);
-const Alumno = defineAlumno(sequelize);
+const Role = defineRole(sequelize);
 const Category = defineCategory(sequelize);
 const Location = defineLocation(sequelize); 
 const Resultado = defineResultado(sequelize);
 const ObjetivoPDI = definePDI(sequelize);
 const TipoObjetivo = defineTipoObjetivo(sequelize);
 const Segmento = defineSegmento(sequelize);
-const ObjetivoSegmento = defineObjetivoSegmento(sequelize); // Estandarizado
+const ObjetivoSegmento = defineObjetivoSegmento(sequelize); 
 const Recurso = defineRecurso(sequelize);
 const EventoRecurso = defineEventoRecurso(sequelize);
 const EventoTipo = defineEventoTipo(sequelize);
 const EventoObjetivo = defineEventoObjetivo(sequelize);
+const Argumentacion = defineArgumentacion(sequelize);
 
+const Administrador= defineAdministrador(sequelize);
+const Admisiones = defineAdmisiones(sequelize);
+const Alumno = defineAlumno(sequelize);
+const Comunicacion = defineComunicacion(sequelize);
+const Daf = defineDaf(sequelize);
+const Academico = defineAcademico(sequelize);
+const Estudiantes = defineEstudiantes(sequelize);
+const Externo= defineExterno(sequelize);
+const Ti = defineTi(sequelize);
+const ServiciosEstudiantiles = defineServicios(sequelize);
+const Facultad= defineFacultad(sequelize);
+const Notificacion = defineNotificacion(sequelize);
 // Crea la instancia de Sequelize
 
 
@@ -70,16 +92,17 @@ Objetivo.belongsToMany(Evento, {
 
 Objetivo.hasMany(ObjetivoPDI, { foreignKey: 'idobjetivo', as: 'ObjetivoPDIs' });
 ObjetivoPDI.belongsTo(Objetivo, { foreignKey: 'idobjetivo' });
-
+Objetivo.belongsTo(TipoObjetivo, {foreignKey:'idtipoobjetivo',as:'TipoObjetivo'})
+TipoObjetivo.hasMany(Objetivo,{foreignKey:'idtipoobjetivo', as:'Objetivos'})
 // Relaciones Muchos-a-Muchos
 Evento.belongsToMany(EventoTipo, { // Ahora 'TipoEvento' SÍ está definido
-  through: 'EventoTipo',
+  through: 'evento_tipos',
   foreignKey: 'idevento',
   otherKey: 'idtipoevento',
-  as: 'TipoEvento'
+  as: 'tiposDeEvento'
 });
 EventoTipo.belongsToMany(Evento, { // Y aquí también
-  through: 'EventoTipos',
+  through: 'evento_tipos',
   foreignKey: 'idtipoevento',
   otherKey: 'idevento',
   as: 'Eventos'
@@ -113,6 +136,55 @@ Recurso.belongsToMany(Evento, {
 Objetivo.hasMany(Argumentacion, { foreignKey: 'idobjetivo', as: 'Argumentaciones' });
 Argumentacion.belongsTo(Objetivo, { foreignKey: 'idobjetivo' });
 Resultado.belongsTo(Evento, { foreignKey: 'idevento',as:'evento' });
+
+User.hasOne(Administrador,{foreignKey:'idusuario', as: 'Administrador'});
+Administrador.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Admisiones,{foreignKey:'idusuario', as: 'Admisiones'});
+Admisiones.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Alumno,{foreignKey:'idusuario', as: 'Alumno'});
+Alumno.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Comunicacion,{foreignKey:'idusuario', as: 'Comunicacion '});
+Comunicacion.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Daf,{foreignKey:'idusuario', as: 'Daf '});
+Daf.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Academico,{foreignKey:'idusuario', as: 'Academico '});
+Academico.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Estudiantes,{foreignKey:'idusuario', as: 'Estudiantes '});
+Estudiantes.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Externo,{foreignKey:'idusuario', as: 'Externo '});
+Externo.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(Ti,{foreignKey:'idusuario', as: 'Ti '});
+Ti.belongsTo(User,{foreignKey:'idusuario'});
+
+User.hasOne(ServiciosEstudiantiles,{foreignKey:'idusuario', as: 'ServiciosEstudiantiles '});
+ServiciosEstudiantiles.belongsTo(User,{foreignKey:'idusuario'});
+
+Facultad.hasMany(Academico, { foreignKey: 'idfacultad', sourceKey: 'idfacultad' });
+Academico.belongsTo(Facultad, { foreignKey: 'idfacultad', targetKey: 'idfacultad' });
+
+Notificacion.hasMany(Administrador,{foreignKey:'idnotificacion',sourceKey:'idnotificacion'})
+Administrador.belongsTo(Notificacion,{foreignKey:'idnotificaion', targetKey:'idnotificacion'})
+
+Evento.belongsTo(User,{foreignKey:'idadministrador', as:'creadorEvento'});
+User.hasMany(Evento,{foreignKey:'idadministrador', as:'eventosCreados'});
+
+Administrador.hasMany(Evento,{foreignKey:'idadministrador', as:'eventos'});
+Evento.belongsTo(Administrador,{foreignKey:'admin_aprobador', as:'usuario'});
+
+Evento.belongsTo(User,{
+  foreignKey: 'idadministrador',
+  as:'creador'
+})
+Notificacion.belongsTo(Administrador,{foreignKey:'idadministrador'});
+Administrador.hasMany(Notificacion,{foreignKey:'idadministrador'});
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
@@ -129,7 +201,6 @@ export {
   Evento,
   Objetivo,
   User,
-  // Alumno, // Desactivado
   Category,
   Location,
   Resultado,
@@ -139,7 +210,20 @@ export {
   ObjetivoSegmento,
   Recurso,
   EventoRecurso,
-  EventoTipo,
+  EventoTipo  ,
   Argumentacion,
-  EventoObjetivo
+  EventoObjetivo,
+  Role,
+  Administrador,
+  Admisiones,
+  Alumno,
+  Comunicacion,
+  Daf,
+  Facultad,
+  Estudiantes,
+  Externo,
+  Ti,
+  ServiciosEstudiantiles,
+  Academico,
+  Notificacion
 };

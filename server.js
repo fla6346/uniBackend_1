@@ -13,7 +13,8 @@ import eventosRouter from './routes/eventos.js'; // CORRECCIÓN: Importamos el r
 import categoryRoutes from './routes/categoryRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import recursosRouter from './routes/recursosRoutes.js'
+import recursosRouter from './routes/recursosRoutes.js';
+import notificationRoutes from './routes/notificacionesRoutes.js'
 import { startTelegramBot } from './bot.js';
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/eventos', eventosRouter);
 app.use('/api/recursos', recursosRouter);
+app.use('/api/notifications', notificationRoutes)
 
 app.get('/api', (req, res) => {
   res.json({ message: 'API de Gestión de Eventos Universitarios Funcionando!' });

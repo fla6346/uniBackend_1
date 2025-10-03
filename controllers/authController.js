@@ -1,5 +1,5 @@
 // backend/controllers/authController.js
-import { User } from '../config/db.js';
+import { User,Facultad,Academico } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
@@ -11,28 +11,34 @@ const generateToken = (id) => {
   });
 };
 
-// ========================================================================
-// === FUNCIÓN 'registerUser' CORREGIDA ===================================
-// ========================================================================
 export const registerUser = async (req, res) => {
     console.log('------------------- authController.js - registerUser INICIO -------------------');
     console.log('REQ.BODY COMPLETO:', JSON.stringify(req.body, null, 2));
   
-    // 1. Extrae los datos del body.
     const {
-        contrasenia, 
-        email, 
+        userName,
         nombre,
         apellidopat, 
         apellidomat, 
+        email, 
+        contrasenia, 
         role, 
         habilitado,
+        facultad_id
     } = req.body;
 
-    // 2. Normaliza el nombre de usuario a una variable consistente (siempre minúscula).
-    //    Esto soluciona el problema de si el frontend envía 'userName' o 'username'.
     const username = req.body.username || req.body.userName;
-
+    
+    // Validar que facultad_id exista
+    if (facultad_id) {
+      const facultad = await Facultad.findByPk(facultad_id);
+      if (!facultad) {
+        return res.status(400).json({ message: 'Error de validación', errors: [{ message: 'Facultad no encontrada' }] });
+      }
+    }
+    if (role === 'academico' && !facultad_id) {
+      return res.status(400).json({ message: 'Error de validación', errors: [{ message: 'facultad_id es requerido para el rol academico' }] });
+    }
     try {
         // 3. Valida los datos de entrada usando la variable normalizada 'username'.
         if (!username || !contrasenia || !email) {
@@ -62,7 +68,12 @@ export const registerUser = async (req, res) => {
             role: role || 'student',
             habilitado: habilitado || '1',
         });
-
+        if (role === 'academico') {
+      await Academico.create({
+        user_id: user.idusuario,
+        facultad_id
+      });
+    }
         if (user) {
             // 6. Genera el token y responde.
             const token = generateToken(user.idusuario);
@@ -91,11 +102,6 @@ export const registerUser = async (req, res) => {
     }
 };
 
-// --- El resto de las funciones no necesitan cambios ---
-
-// @desc    Autenticar un usuario y obtener token
-// @route   POST /api/auth/login
-// @access  Public
 export const loginUser = async (req, res) => {
   console.log('---------------------------------------------------------------');
   console.log('Backend /api/auth/login - req.body recibido:', req.body);

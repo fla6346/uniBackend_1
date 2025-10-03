@@ -1,4 +1,4 @@
-import eventRoutes from './eventRoutes.js'
+import eventRoutes from './eventRoutesNO.js'
 import express from 'express';
 const router = express.Router(); // <--- Aquí defines 'router'
 import {
