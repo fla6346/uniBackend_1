@@ -7,7 +7,11 @@ import { sequelize,
   TipoObjetivo,
   Segmento,
   Recurso,
+<<<<<<< HEAD
   User,Notificacion } from '../config/db.js';
+=======
+  User } from '../config/db.js';
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 import { Op } from 'sequelize';
 import asyncHandler from 'express-async-handler';
 import notificationController from './notificationController.js';
@@ -76,6 +80,7 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
       responsable_evento: data.responsable_evento,
       aprobado:false,
       rechazado:false,
+<<<<<<< HEAD
       estado:'pendiente'
     }, { transaction: t });
 
@@ -89,6 +94,19 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
       console.log('Procesando objetivos como array:', data.objetivos);
       
     /*for (const key in parsedObjetivos) {
+=======
+
+    }, { transaction: t });
+
+    const nuevoEventoId = nuevoEvento.idevento;
+
+    await guardarTiposEvento(nuevoEventoId, data.tipos_de_evento, t);
+
+    const objetivosACrear = [];
+    const parsedObjetivos = safeJsonParse(data.objetivos, {});
+
+    for (const key in parsedObjetivos) {
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
       if (parsedObjetivos[key] === true && OBJETIVO_TYPES[key]) {
         objetivosACrear.push({
           idevento: nuevoEventoId,
@@ -130,7 +148,11 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
       nuevosObjetivos = await Objetivo.bulkCreate(objetivosACrear, { transaction: t });
     }
 
+<<<<<<< HEAD
     const objetivosPDIArray = Array.isArray(data.objetivos_pdi)? data.objetivos_pdi:[];
+=======
+    const objetivosPDIArray = safeJsonParse(data.objetivos_pdi, []);
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
     if (objetivosPDIArray.length > 0) {
       const descripcionesPDI = objetivosPDIArray.filter(desc => desc && desc.trim() !== '');
       if (descripcionesPDI.length > 0) {
@@ -237,9 +259,13 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
     { model: User, as: 'creadorEvento' }
   ]
 });
+<<<<<<< HEAD
     res.status(201).json({
       message: 'Evento creado exitosamente',
       evento: completo });
+=======
+    res.status(201).json({ message: 'Evento creado exitosamente', evento: eventoCompleto });
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 
   } catch (error) {
     if (!t.finished) {
@@ -256,6 +282,7 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
 export const createEvento = async (req, res) => {
   const t = await sequelize.transaction();
 
+<<<<<<< HEAD
   try {
     const data = req.body;
     
@@ -577,6 +604,8 @@ export const createEvento = async (req, res) => {
     });
   }
 };
+=======
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 export const getAllEventos = asyncHandler(async (req, res) => {
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -1001,12 +1030,27 @@ export const approveEvent = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
 
+<<<<<<< HEAD
+=======
+    // Verificar que el usuario tenga permisos de administrador
+    // if (req.user.role !== 'admin' && req.user.role !== 'director') {
+    //   return res.status(403).json({ message: 'No tienes permisos para aprobar eventos' });
+    // }
+
+    // Actualizar el estado del evento
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
     evento.estado = 'aprobado';
     evento.fecha_aprobacion = new Date();
     // evento.aprobado_por = req.user.idusuario; // Descomenta cuando tengas el sistema de usuarios
 
     const eventoActualizado = await evento.save();
 
+<<<<<<< HEAD
+=======
+    // Opcional: Enviar notificación al organizador
+    // await sendNotificationToOrganizer(evento, 'approved');
+
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
     res.status(200).json({
       message: 'Evento aprobado exitosamente',
       evento: eventoActualizado
@@ -1024,6 +1068,7 @@ export const getApprovedEvents = asyncHandler(async (req, res) => {
   try {
     const eventos = await Evento.findAll({
       where: {
+<<<<<<< HEAD
         estado: 'aprobado'
       },
     });
@@ -1032,6 +1077,26 @@ export const getApprovedEvents = asyncHandler(async (req, res) => {
     eventos.forEach(e => console.log('ID:', e.idevento, 'Estado:', JSON.stringify(e.estado)));
 
     res.status(200).json(eventos);
+=======
+        estado: 'Aprobado'
+      },
+      order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
+      include: [
+        { model: Resultado, as: 'Resultados' },
+        { model: Objetivo, as: 'Objetivos' },
+        { model: Recurso, as: 'Recursos' }
+      ]
+    });
+
+    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const eventosConUrl = eventos.map(evento => {
+      const eventoData = evento.get({ plain: true });
+      eventoData.imagenUrl = eventoData.imagen ? `${baseUrl}${eventoData.imagen}` : null;
+      return eventoData;
+    });
+
+    res.status(200).json(eventosConUrl);
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
   } catch (error) {
     console.error('Error al obtener eventos aprobados:', error);
     res.status(500).json({ 
@@ -1040,7 +1105,10 @@ export const getApprovedEvents = asyncHandler(async (req, res) => {
     });
   }
 });
+<<<<<<< HEAD
 
+=======
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 export const getPendingEvents = asyncHandler(async (req, res) => {
   try {
     const eventos = await Evento.findAll({
@@ -1095,6 +1163,11 @@ export const rejectEvent = asyncHandler(async (req, res) => {
 
     const eventoActualizado = await evento.save();
 
+<<<<<<< HEAD
+=======
+    // Opcional: Enviar notificación al organizador
+    // await sendNotificationToOrganizer(evento, 'rejected', razon_rechazo);
+>>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 
     res.status(200).json({
       message: 'Evento rechazado exitosamente',
