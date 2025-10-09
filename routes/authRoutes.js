@@ -9,6 +9,6 @@ import { protect } from '../middleware/authMiddleware.js';
 
 router.post('/register', registerUser); 
 router.post('/login', loginUser);
-router.get('/me', protect, getMe); // Ejemplo de ruta protegida
+router.get('/me', protect, getMe); 
 
 export default router; // Usar export default

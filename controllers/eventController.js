@@ -1,4 +1,8 @@
-import { sequelize, Evento, EventoTipo, Objetivo, ObjetivoSegmento, Resultado, ObjetivoPDI, EventoObjetivo,EventoRecurso,Recurso } from '../config/db.js';
+import { sequelize,
+   Evento,
+   EventoTipo,
+   Objetivo,
+   ObjetivoSegmento, Resultado, ObjetivoPDI, EventoObjetivo,EventoRecurso,Recurso } from '../config/db.js';
 import asyncHandler from 'express-async-handler';
 
 // --- CONSTANTES ---
@@ -35,6 +39,9 @@ export const createEvento = async (req, res) => {
       fechaevento: data.fechaevento,
       horaevento: data.horaevento,
       responsable_evento: data.responsable_evento,
+      descripcion: data.descripcion || null,
+      participantes_esperados: data.participantes_esperados || 0,
+      estado: 'Pendiente', // Estado por defecto
     }, { transaction: t });
     const nuevoEventoId = nuevoEvento.idevento;
     console.log(`✓ Evento principal creado con ID: ${nuevoEventoId}`);
@@ -195,6 +202,7 @@ export const createEvento = async (req, res) => {
     });
   }
 };
+
 export const getAllEventos = asyncHandler(async (req, res) => {
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -236,7 +244,12 @@ export const getEventoById = asyncHandler(async (req, res) => {
       },
       include: [
         { model: Resultado, as: 'Resultados' },
-        { model: Objetivo, as: 'Objetivos' }
+        { 
+          model: Objetivo, 
+          as: 'Objetivos',
+          through: { attributes: ['texto_personalizado_relacion'] }
+        },
+        { model: Recurso, as: 'Recursos' }
       ]
     });
 
@@ -244,7 +257,12 @@ export const getEventoById = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
 
-    res.status(200).json(evento);
+    // Agregar URL de imagen si existe
+    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+    const eventoData = evento.get({ plain: true });
+    eventoData.imagenUrl = eventoData.imagen ? `${baseUrl}${eventoData.imagen}` : null;
+
+    res.status(200).json(eventoData);
   } catch (error) {
     console.error('Error al obtener evento por ID:', error);
     res.status(500).json({ 
@@ -253,6 +271,16 @@ export const getEventoById = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// ===== NUEVAS FUNCIONES DE APROBACIÓN =====
+
+
+
+
+
+
+
+// ===== FUNCIONES EXISTENTES ACTUALIZADAS =====
 
 export const updateEvento = asyncHandler(async (req, res) => {
   try {
@@ -269,6 +297,7 @@ export const updateEvento = asyncHandler(async (req, res) => {
 
     const allowedUpdates = [
       'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
+      'responsable_evento', 'descripcion', 'participantes_esperados',
       'idtipoevento', 'idservicio', 'idactividad', 'idambiente', 'idobjetivo'
     ];
 
@@ -321,13 +350,44 @@ export const deleteEvento = asyncHandler(async (req, res) => {
   }
 });
 
+// ===== FUNCIONES AUXILIARES =====
+
+// Función auxiliar para enviar notificaciones (implementar según tus necesidades)
+const sendNotificationToOrganizer = async (evento, action, reason = null) => {
+  try {
+    // Aquí implementarías la lógica de notificaciones
+    // Por ejemplo, envío de email, notificación push, etc.
+    
+    const message = action === 'approved' 
+      ? `Tu evento "${evento.nombreevento}" ha sido aprobado.`
+      : `Tu evento "${evento.nombreevento}" ha sido rechazado. Razón: ${reason}`;
+
+    console.log('Notificación enviada:', message);
+    
+    // Ejemplo de implementación con Telegram (si tienes configurado)
+    /*
+    if (evento.organizador_telegram_id) {
+      await axios.post(process.env.TELEGRAM_BOT_URL, {
+        chat_id: evento.organizador_telegram_id,
+        text: message
+      });
+    }
+    */
+    
+  } catch (error) {
+    console.error('Error al enviar notificación:', error);
+  }
+};
+
+// ===== FUNCIONES EXISTENTES (mantenidas para compatibilidad) =====
+
 // Raw query functions (kept for compatibility)
 export const fetchEventsWithRawQuery = async () => {
   try {
     console.log('[DB-RAW] Buscando eventos con consulta directa...');
     
     const [eventos] = await sequelize.query(
-      "SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento FROM evento ORDER BY fechaevento DESC"
+      "SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento, estado FROM evento ORDER BY fechaevento DESC"
     );
     
     console.log(`[DB-RAW] Se encontraron ${eventos.length} eventos.`);

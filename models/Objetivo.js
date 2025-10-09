@@ -1,4 +1,3 @@
-// models/Objetivo.js
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
@@ -19,6 +18,14 @@ export default (sequelize) => {
       allowNull: true,
       field: 'texto_personalizado',
     },
+    idevento:{
+       type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'evento',
+      key: 'idevento'
+    }
+    }
      
   }, {
     tableName: 'objetivos', // Nombre de la tabla "hija"

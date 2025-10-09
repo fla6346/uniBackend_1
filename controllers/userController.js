@@ -1,5 +1,5 @@
 // backend/controllers/userController.js
-import { User } from '../config/db.js'; // Asegúrate que esta importación traiga tu modelo User
+import { User,Role } from '../config/db.js'; // Asegúrate que esta importación traiga tu modelo User
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs'; // Para hashear contraseñas
 import asyncHandler from 'express-async-handler'; // Para manejo de errores async
@@ -65,7 +65,7 @@ export const createUser = asyncHandler(async (req, res) => {
       email: newUser.email,
       role: newUser.role,
       habilitado: newUser.habilitado,
-      createdAt: newUser.createdAt,
+      //createdAt: newUser.createdAt,
     };
     res.status(201).json(userResponse);
   } else {
@@ -78,12 +78,19 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   
   const users = await User.findAll({
     attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
-    order: [['createdAt', 'DESC']],
+    //order: [['createdAt', 'DESC']],
   });
   res.status(200).json(users);
 });
 
-
+export const getCarrera= asyncHandler(async (req,res)=>{
+  try {
+    const carreras = await carreras.findAll(); // Suponiendo que usas un ORM como Sequelize
+    res.status(200).json(carreras);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener carreras', error });
+  }
+});
 export const getUserById = asyncHandler(async (req, res) => {
   const user = await User.findByPk(req.params.id, {
     attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
@@ -133,6 +140,7 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     }
     user.role = role;
   }
+  
 
   // Si se envía una nueva contraseña, hashearla y actualizarla
   // if (newPassword) {
@@ -158,6 +166,40 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     updatedAt: updatedUser.updatedAt,
   };
   res.status(200).json(userResponse);
+});
+
+export const getDirectoresCarrera = asyncHandler(async(req, res) => {
+  try{ 
+  const directorRole = await Role.findOne({
+      where: { nombrerol: 'Director de carrera' }
+    });
+  if (!directorRole) {
+      res.status(404);
+      throw new Error('Rol "Director de carrera" no encontrado.');
+    }
+
+    const directores = await User.findAll({
+      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+      include: [{
+        model: Role,
+        where: { idrol: directorRole.idrol },
+        through: { attributes: [] } // No incluir atributos de la tabla de unión
+      }],
+      limit: 5, // Según tu consulta original
+    });
+
+    // Formatea la respuesta para que coincida con el 'nombreCompleto' esperado por tu frontend
+    const formattedDirectores = directores.map(director => ({
+      id: director.idusuario,
+      nombreCompleto: `${director.nombre} ${director.apellidopat} ${director.apellidomat ? director.apellidomat : ''}`.trim()
+    }));
+
+    res.status(200).json(formattedDirectores);
+  } catch (error) {
+    console.error('Error al obtener directores de carrera:', error);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+  }
+
 });
 
 // @desc    Eliminar un usuario (Admin)
