@@ -75,9 +75,16 @@ const Event = sequelize.define('Evento', {
   idadministrador:{
     type:DataTypes.STRING,
     allowNull:true,
-    References:{model:'user',
+    references:{model:'user',
       key:'idusuario'
     }
+  },idclasificacion:{
+    type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'subcategoria',
+        key: 'idsubcategoria',
+      },
   }
 },
  {

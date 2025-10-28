@@ -7,15 +7,15 @@ import { sequelize,
   TipoObjetivo,
   Segmento,
   Recurso,
-<<<<<<< HEAD
   User,Notificacion } from '../config/db.js';
-=======
-  User } from '../config/db.js';
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 import { Op } from 'sequelize';
 import asyncHandler from 'express-async-handler';
-import notificationController from './notificationController.js';
-
+import {
+  createNotification,
+  getUserNotifications,
+  markAsRead,
+  getUnreadCount
+} from '../controllers/notificationController.js';
 const guardarTiposEvento = async (idevento, tiposEvento, transaction) => {
   // CORRECCIÓN: La lógica estaba invertida
   if (!tiposEvento || !Array.isArray(tiposEvento)) {
@@ -61,228 +61,9 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
   }
 };
 
-/*export const createEvento = async (req, res) => {
-  const t = await sequelize.transaction();
-
-  try {
-    const data = req.body;
-    
-    console.log('=== DEBUG DATOS RECIBIDOS ===');
-    console.log('data.tipos_de_evento:', data.tipos_de_evento);
-    console.log('data.objetivos:', data.objetivos);
-    console.log('data.segmentos_objetivo (raw):', data.segmentos_objetivo);
-    // 1. Crear el Evento principal
-    const nuevoEvento = await Evento.create({
-      nombreevento: data.nombreevento,
-     lugarevento: data.lugarevento || 'Por definir',
-      fechaevento: data.fechaevento,
-      horaevento: data.horaevento,
-      responsable_evento: data.responsable_evento,
-      aprobado:false,
-      rechazado:false,
-<<<<<<< HEAD
-      estado:'pendiente'
-    }, { transaction: t });
-
-    const nuevoEventoId = nuevoEvento.idevento;
-      console.log('✓ Evento principal creado con ID:', nuevoEventoId);
-    await guardarTiposEvento(nuevoEventoId, data.tipos_de_evento, t);
-
-    const objetivosACrear = [];
-    //const parsedObjetivos = data.objetivos || {};
-    if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-      console.log('Procesando objetivos como array:', data.objetivos);
-      
-    /*for (const key in parsedObjetivos) {
-=======
-
-    }, { transaction: t });
-
-    const nuevoEventoId = nuevoEvento.idevento;
-
-    await guardarTiposEvento(nuevoEventoId, data.tipos_de_evento, t);
-
-    const objetivosACrear = [];
-    const parsedObjetivos = safeJsonParse(data.objetivos, {});
-
-    for (const key in parsedObjetivos) {
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
-      if (parsedObjetivos[key] === true && OBJETIVO_TYPES[key]) {
-        objetivosACrear.push({
-          idevento: nuevoEventoId,
-          idtipoobjetivo: OBJETIVO_TYPES[key],
-          texto_personalizado: (key === 'otro') ? parsedObjetivos.otroTexto : null,
-          //argumentacion: data.argumentacion || null,
-        });
-      }
-    }*/
-   /*
-   for( const objetivo of data.objetivo){
-    if(objetivo.id){
-      objetivosACrear.push({
-        idevento:nuevoEventoId,
-        idtipoobjetivo: objetivo.id,
-        textoPersonalizado: objetivo.texto_personalizado || null,
-      })
-    }
-   }
-  }
-
-    // 3.2 Preparar Objetivo de Segmentación
-    const parsedSegmentos = Array.isArray(data.segmentos_objetivo)? data.segmentos_objetivo :[];
-    const argumentacionSegmento = data.argumentacion_segmento || '';
-    const otroSegmentoTexto = parsedSegmentos.find(s => s.texto)?.texto || '';
-
-    if (argumentacionSegmento.trim() || otroSegmentoTexto.trim()) {
-      objetivosACrear.push({
-        idevento: nuevoEventoId,
-        idtipoobjetivo: OTRO_TIPO_ID,
-        texto_personalizado: otroSegmentoTexto.trim() || 'Segmentación de Público',
-        argumentacion: argumentacionSegmento.trim(),
-      });
-    }
-
-    let nuevosObjetivos = [];
-
-    if (objetivosACrear.length > 0) {
-      nuevosObjetivos = await Objetivo.bulkCreate(objetivosACrear, { transaction: t });
-    }
-
-<<<<<<< HEAD
-    const objetivosPDIArray = Array.isArray(data.objetivos_pdi)? data.objetivos_pdi:[];
-=======
-    const objetivosPDIArray = safeJsonParse(data.objetivos_pdi, []);
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
-    if (objetivosPDIArray.length > 0) {
-      const descripcionesPDI = objetivosPDIArray.filter(desc => desc && desc.trim() !== '');
-      if (descripcionesPDI.length > 0) {
-        const objetivoGeneralPDI = await Objetivo.create({
-          idevento: nuevoEventoId,
-          idtipoobjetivo: OTRO_TIPO_ID,
-          texto_personalizado: `PDI - ${descripcionesPDI.length} objetivos`,
-          //argumentacion: data.argumentacion_pdi || null,
-        }, { transaction: t });
-
-        nuevosObjetivos.push(objetivoGeneralPDI);
-
-        const objetivosPDIACrear = descripcionesPDI.map(descripcion => ({
-          idobjetivo: objetivoGeneralPDI.idobjetivo,
-          descripcion: descripcion,
-        }));
-        await ObjetivoPDI.bulkCreate(objetivosPDIACrear, { transaction: t });
-      }
-    }
-
-    // 4. Procesar relaciones objetivo_segmento
-    console.log('=== DEBUG SEGMENTOS ===');
-    console.log('parsedSegmentos:', parsedSegmentos);
-    console.log('nuevosObjetivos length:', nuevosObjetivos.length);
-    console.log('nuevosObjetivos IDs:', nuevosObjetivos.map(o => o.idobjetivo));
-
-    if (parsedSegmentos.length > 0) {
-      // Si no hay objetivos, crear uno genérico
-      if (nuevosObjetivos.length === 0) {
-        console.log('No se encontraron objetivos, creando objetivo genérico...');
-        const objetivoGenerico = await Objetivo.create({
-          idevento: nuevoEventoId,
-          idtipoobjetivo: OTRO_TIPO_ID,
-          texto_personalizado: 'Objetivo General del Evento',
-        }, { transaction: t });
-        nuevosObjetivos.push(objetivoGenerico);
-      }
-
-      console.log('Insertando relaciones objetivo_segmento...');
-      for (const objetivo of nuevosObjetivos) {
-        for (const segmentoData of parsedSegmentos) {
-          try {
-            console.log(`Insertando: objetivo ${objetivo.idobjetivo}, segmento ${segmentoData.id}`);
-            
-            // Validar que segmentoData tiene la estructura correcta
-            if (!segmentoData.id) {
-              console.warn('Segmento sin ID:', segmentoData);
-              continue;
-            }
-
-            await sequelize.query(
-              'INSERT INTO objetivo_segmento (idobjetivo, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
-              {
-                replacements: [objetivo.idobjetivo, segmentoData.id, segmentoData.texto_personalizado || null],
-                transaction: t
-              }
-            );
-
-            console.log(`✓ Insertado objetivo_segmento: ${objetivo.idobjetivo} - ${segmentoData.id}`);
-          } catch (segmentoError) {
-            console.error('Error insertando objetivo_segmento:', segmentoError);
-            console.error('Datos:', { 
-              objetivoId: objetivo.idobjetivo, 
-              segmentoId: segmentoData.id, 
-              textoPersonalizado: segmentoData.texto_personalizado 
-            });
-            // Re-lanzar el error para que la transacción se revierta
-            throw segmentoError;
-          }
-        }
-      }
-      console.log('✓ Todas las relaciones objetivo_segmento insertadas correctamente');
-    } else {
-      console.log('No hay segmentos para asociar');
-    }
-
-    const parsedResultados = data.resultados_esperados || {};
-    await Resultado.create({
-      idevento: nuevoEventoId,
-      participacion_esperada: parseInt(parsedResultados.participacion, 10) || 0,
-      satisfaccion_esperada: parseInt(parsedResultados.satisfaccion, 10) || 0,
-      otros_resultados: parsedResultados.otro || null,
-    }, { transaction: t });
-
-    // 6. Guardar Recursos
-    if (data.recursos && Array.isArray(data.recursos)) {
-      const recursosACrear = data.recursos.map(recurso => ({
-        idevento: nuevoEventoId,
-        idrecurso: recurso.idrecurso,
-        nombre_recurso: recurso.nombre_recurso,
-      }));
-      if (recursosACrear.length > 0) {
-        await Recurso.bulkCreate(recursosACrear, { transaction: t });
-      }
-    }
-
-    await t.commit();
-
-   const completo = await Evento.findByPk(nuevoEventoId, {
-  include: [
-    { model: Resultado, as: 'Resultados' },
-    { model: Objetivo, as: 'Objetivos' },
-    { model: Recurso, as: 'Recursos' },
-    { model: User, as: 'creadorEvento' }
-  ]
-});
-<<<<<<< HEAD
-    res.status(201).json({
-      message: 'Evento creado exitosamente',
-      evento: completo });
-=======
-    res.status(201).json({ message: 'Evento creado exitosamente', evento: eventoCompleto });
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
-
-  } catch (error) {
-    if (!t.finished) {
-      await t.rollback();
-    }
-    console.error('Error en la transacción al crear el evento:', error);
-    res.status(500).json({
-      message: 'Error interno del servidor al crear el evento.',
-      error: error.message,
-      details: error.stack
-    });
-  }
-};*/
 export const createEvento = async (req, res) => {
   const t = await sequelize.transaction();
 
-<<<<<<< HEAD
   try {
     const data = req.body;
     
@@ -410,11 +191,9 @@ export const createEvento = async (req, res) => {
         const idsSegmentosValidos = new Set(segmentosValidos.map(seg => seg.idsegmento));
         console.log('IDs de segmentos válidos en DB:', [...idsSegmentosValidos]);
     
-    // ✅ Declarar variables ANTES de usarlas
     const argumentacionSegmento = data.argumentacion_segmento || '';
     const otroSegmentoTexto = parsedSegmentos.find(s => s.texto)?.texto || '';
 
-    // 5.1 Agregar objetivo de segmentación si existe
     if (argumentacionSegmento.trim() || otroSegmentoTexto.trim()) {
       const objetivoSegmentacion = await Objetivo.create({
         idevento: nuevoEventoId,
@@ -422,7 +201,6 @@ export const createEvento = async (req, res) => {
         texto_personalizado: otroSegmentoTexto.trim() || 'Segmentación de Público',
       }, { transaction: t });
       
-      // Guardar argumentación de segmentación
       if (argumentacionSegmento.trim()) {
         await sequelize.query(
           'INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)',
@@ -437,7 +215,6 @@ export const createEvento = async (req, res) => {
       console.log('✓ Objetivo de segmentación creado');
     }
 
-    // 5.2 Asociar segmentos con objetivos
     if (parsedSegmentos.length > 0) {
       console.log('Procesando segmentos objetivo:', parsedSegmentos);
        const segmentosFiltrados = parsedSegmentos.filter(seg => {
@@ -454,7 +231,6 @@ export const createEvento = async (req, res) => {
   });
 
   console.log('Segmentos filtrados para inserción:', segmentosFiltrados);
-      // Si no hay objetivos creados, crear uno genérico
       if (nuevosObjetivos.length === 0) {
         console.log('Creando objetivo genérico para asociar segmentos...');
         const objetivoGenerico = await Objetivo.create({
@@ -463,7 +239,6 @@ export const createEvento = async (req, res) => {
           texto_personalizado: 'Objetivo General del Evento',
         }, { transaction: t });
         
-        // Guardar argumentación para objetivo genérico si existe
         if (data.argumentacion && data.argumentacion.trim()) {
           await sequelize.query(
             'INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)',
@@ -477,7 +252,6 @@ export const createEvento = async (req, res) => {
         nuevosObjetivos.push(objetivoGenerico);
       }
 
-      // Asociar segmentos con objetivos
       for (const objetivo of nuevosObjetivos) {
         for (const segmentoData of segmentosFiltrados) {
           const idSegmento = parseInt(segmentoData.id);
@@ -505,7 +279,6 @@ export const createEvento = async (req, res) => {
           segmentoId: idSegmento,
           textoPersonalizado: textoPersonalizado
         });
-        // Re-lanzar el error para que la transacción se revierta
         throw segmentoError;
       }
     }
@@ -514,7 +287,6 @@ export const createEvento = async (req, res) => {
 } else {
   console.log('No hay segmentos para asociar');
 }
-    // 6. Procesar Resultados Esperados
     let parsedResultados = {};
     if (data.resultados_esperados) {
       try {
@@ -534,7 +306,6 @@ export const createEvento = async (req, res) => {
     }, { transaction: t });
     console.log('✓ Resultados esperados guardados');
 
-    // 7. Procesar Recursos Nuevos
     if (data.recursos_nuevos && Array.isArray(data.recursos_nuevos) && data.recursos_nuevos.length > 0) {
       const recursosACrear = data.recursos_nuevos.map(recurso => ({
         idevento: nuevoEventoId,
@@ -546,7 +317,6 @@ export const createEvento = async (req, res) => {
       console.log(`✓ ${recursosACrear.length} recursos nuevos creados`);
     }
 
-    // 8. Procesar Recursos Existentes
     if (data.recursos && Array.isArray(data.recursos) && data.recursos.length > 0) {
       const recursosExistentesACrear = data.recursos.map(recurso => ({
         idevento: nuevoEventoId,
@@ -559,12 +329,56 @@ export const createEvento = async (req, res) => {
         console.log(`✓ ${recursosExistentesACrear.length} recursos existentes asociados`);
       }
     }
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+  console.log('Procesando comité del evento:', data.comite);
+  
+  // Validar que todos los IDs de usuario existan y estén habilitados
+  const usuariosValidos = await User.findAll({
+    where: {
+      idusuario: data.comite,
+      habilitado: '1'
+    },
+    attributes: ['idusuario']
+  });
+  
+  const idsValidos = usuariosValidos.map(u => u.idusuario);
+  const idsInvalidos = data.comite.filter(id => !idsValidos.includes(id));
+  
+  if (idsInvalidos.length > 0) {
+    console.warn('IDs de usuario inválidos o inhabilitados:', idsInvalidos);
+  }
 
-    // Hacer commit de la transacción
+  if (idsValidos.length > 0) {
+    const comiteData = idsValidos.map(idusuario => ({
+      idevento: nuevoEventoId,
+      idusuario,
+      created_at: new Date()
+    }));
+
+    await sequelize.models.EventoComite.bulkCreate(comiteData, { transaction: t });
+    console.log(`✓ ${idsValidos.length} miembros del comité asignados`);
+
+    for (const idusuario of idsValidos) {
+      try {
+        await createNotification({
+          type: 'evento_asignado',
+          title: 'Has sido asignado a un evento',
+          message: `El evento "${nuevoEvento.nombreevento}" te ha asignado como miembro del comité.`,
+          idusuario: idusuario,
+          idevento: nuevoEventoId
+        }, t); 
+        console.log(`✓ Notificación enviada a usuario ID: ${idusuario}`);
+      } catch (notifError) {
+        console.error(`Error al enviar notificación al usuario ${idusuario}:`, notifError);
+      }
+    }
+  }
+}
+
     await t.commit();
     console.log('✓ Transacción completada exitosamente');
 
-    // 9. Obtener el evento completo con todas las relaciones
+
     const eventoCompleto = await Evento.findByPk(nuevoEventoId, {
       include: [
         { model: Resultado, as: 'Resultados' },
@@ -572,7 +386,7 @@ export const createEvento = async (req, res) => {
         { model: Recurso, as: 'Recursos' },
         { 
           model: User, 
-          as: 'creadorEvento',
+          as: 'creador',
           attributes: ['nombre', 'apellidopat', 'apellidomat', 'email', 'role']
         }
       ]
@@ -604,8 +418,6 @@ export const createEvento = async (req, res) => {
     });
   }
 };
-=======
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 export const getAllEventos = asyncHandler(async (req, res) => {
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -838,6 +650,9 @@ export const getEventosNoAprobados = asyncHandler(
        console.log('Backend: Obteniendo eventos no aprobados...');
     
     const eventos = await Evento.findAndCountAll({
+       attributes: {
+    exclude: ['creadorid'] 
+  },
       where:{
         [Op.or]: [
           {estado:'pendiente'},
@@ -895,7 +710,7 @@ export const aprobarEvento = async (req, res) => {
   const { id } = req.params;
   
   const evento = await Evento.findByPk(id, {
-    include: [{ model: User, as: 'creadorEvento' }]
+    include: [{ model: User, as: 'creador' }]
   });
   
   if (!evento) {
@@ -909,12 +724,11 @@ export const aprobarEvento = async (req, res) => {
   if (evento.creadorEvento) {
     try {
       await Notificacion.create({
-          userId: evento.creadorEvento.idusuario,
-          title: '¡Tu evento ha sido aprobado!',
-          message: `El evento "${evento.nombreevento}" ha sido aprobado y ya está visible.`,
-          type: 'event',
-          relatedId: evento.idevento,
-          relatedType: 'event',
+         idadministrador: organizadorId, // o idestudiante según corresponda
+          titulo: 'Evento aprobado',
+          mensaje: `Tu evento ha sido aprobado.`,
+          tipo: 'aprobacion',
+          estado: 'nueva',
           read: false
       });
       console.log('✅ Notificación creada para el usuario:', evento.creadorEvento.idusuario);
@@ -1030,27 +844,12 @@ export const approveEvent = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
 
-<<<<<<< HEAD
-=======
-    // Verificar que el usuario tenga permisos de administrador
-    // if (req.user.role !== 'admin' && req.user.role !== 'director') {
-    //   return res.status(403).json({ message: 'No tienes permisos para aprobar eventos' });
-    // }
-
-    // Actualizar el estado del evento
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
     evento.estado = 'aprobado';
     evento.fecha_aprobacion = new Date();
     // evento.aprobado_por = req.user.idusuario; // Descomenta cuando tengas el sistema de usuarios
 
     const eventoActualizado = await evento.save();
 
-<<<<<<< HEAD
-=======
-    // Opcional: Enviar notificación al organizador
-    // await sendNotificationToOrganizer(evento, 'approved');
-
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
     res.status(200).json({
       message: 'Evento aprobado exitosamente',
       evento: eventoActualizado
@@ -1067,8 +866,10 @@ export const approveEvent = asyncHandler(async (req, res) => {
 export const getApprovedEvents = asyncHandler(async (req, res) => {
   try {
     const eventos = await Evento.findAll({
+      attributes: {
+    exclude: ['creadorid']
+      },
       where: {
-<<<<<<< HEAD
         estado: 'aprobado'
       },
     });
@@ -1077,26 +878,6 @@ export const getApprovedEvents = asyncHandler(async (req, res) => {
     eventos.forEach(e => console.log('ID:', e.idevento, 'Estado:', JSON.stringify(e.estado)));
 
     res.status(200).json(eventos);
-=======
-        estado: 'Aprobado'
-      },
-      order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
-      include: [
-        { model: Resultado, as: 'Resultados' },
-        { model: Objetivo, as: 'Objetivos' },
-        { model: Recurso, as: 'Recursos' }
-      ]
-    });
-
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
-    const eventosConUrl = eventos.map(evento => {
-      const eventoData = evento.get({ plain: true });
-      eventoData.imagenUrl = eventoData.imagen ? `${baseUrl}${eventoData.imagen}` : null;
-      return eventoData;
-    });
-
-    res.status(200).json(eventosConUrl);
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
   } catch (error) {
     console.error('Error al obtener eventos aprobados:', error);
     res.status(500).json({ 
@@ -1105,10 +886,6 @@ export const getApprovedEvents = asyncHandler(async (req, res) => {
     });
   }
 });
-<<<<<<< HEAD
-
-=======
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 export const getPendingEvents = asyncHandler(async (req, res) => {
   try {
     const eventos = await Evento.findAll({
@@ -1163,11 +940,6 @@ export const rejectEvent = asyncHandler(async (req, res) => {
 
     const eventoActualizado = await evento.save();
 
-<<<<<<< HEAD
-=======
-    // Opcional: Enviar notificación al organizador
-    // await sendNotificationToOrganizer(evento, 'rejected', razon_rechazo);
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 
     res.status(200).json({
       message: 'Evento rechazado exitosamente',

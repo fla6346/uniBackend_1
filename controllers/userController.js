@@ -1,5 +1,5 @@
 // backend/controllers/userController.js
-import { User,Role } from '../config/db.js'; // Asegúrate que esta importación traiga tu modelo User
+import { User,Role, Academico, Facultad } from '../config/db.js'; // Asegúrate que esta importación traiga tu modelo User
 import { Op } from 'sequelize';
 import bcrypt from 'bcryptjs'; // Para hashear contraseñas
 import asyncHandler from 'express-async-handler'; // Para manejo de errores async
@@ -12,11 +12,11 @@ export const createUser = asyncHandler(async (req, res) => {
     apellidopat,
     apellidomat,
     email,
-    contrasenia, // Contraseña en texto plano desde el frontend
+    contrasenia, 
     role,
     habilitado,
-     idusuarioexterno, // Opcional
-     idestudiante,   // Opcional
+     idusuarioexterno,
+     idestudiante,   
   } = req.body;
 
   // 1. Validar datos de entrada
@@ -92,7 +92,7 @@ export const getCarrera= asyncHandler(async (req,res)=>{
   }
 });
 export const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findByPk(req.params.id, {
+  const user = await User.findByPk(req.params.idusuario, {
     attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
   });
 
@@ -223,6 +223,48 @@ export const deleteUserByAdmin = asyncHandler(async (req, res) => {
   await user.destroy();
   res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
 });
+export const getComite = asyncHandler(async(req, res) => {
+  try {
+    const users = await User.findAll({
+      where: {
+        role: ['admin', 'academico', 'DAF', 'TI'], // o los roles que apliquen
+        habilitado: '1'
+      },
+      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role'],
+      include:[{
+        model:Academico,
+        as: 'academico',
+        attributes:[],
+        include:[
+          {
+            model:Facultad,
+            as:'facultad',
+            attributes:['nombre_facultad']
+          }
+        ],
+        required: false
+      }
+    ],
+      order: [['rol', 'ASC']]
+    });
+
+    const formattedUsers = users.map(user => {
+       const facultad = user.academico?.facultad?.nombre || null;
+      return {
+        id: user.idusuario,
+        nombreCompleto: `${user.nombre} ${user.apellidopat} ${user.apellidomat}`.trim(),
+        email: user.email,
+        role: user.role,
+        facultad: user.academico?.facultad?.nomfacultad 
+      };
+    });
+    res.json(formattedUsers);
+  } catch (error) {
+    console.error('Error al obtener usuarios para comité:', error);
+    res.status(500).json({ error: 'Error al cargar los usuarios' });
+  }
+});
+
 export const linkTelegramAccount = asyncHandler(async (req, res) => {
    console.log('============================================');
   console.log('[API] Petición de vinculación de Telegram RECIBIDA.');

@@ -10,6 +10,7 @@ const defineUser = (sequelize) => {
       primaryKey: true,
       allowNull: false,
       autoIncrement: true,
+      field:'idusuario'
     },
     username: {
       type: DataTypes.STRING(20),
@@ -88,7 +89,6 @@ const defineUser = (sequelize) => {
   }, {
     tableName: 'usuario',
     timestamps: false,
-    underscored: true,
     hooks: {
       beforeCreate: async (user) => {
         if (user.contrasenia && (user.isNewRecord || user.changed('contrasenia'))) {

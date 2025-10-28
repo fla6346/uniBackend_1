@@ -44,7 +44,7 @@ import defineExterno from '../models/Estudiante.js';
 import defineTi from '../models/Ti.js';
 import defineServicios from '../models/ServiciosEstudiantiles.js';
 import defineFacultad from '../models/Facultad.js';
-
+import defineComite from '../models/EventoComite.js'
 
 const Evento = defineEvento(sequelize);
 const Objetivo = defineObjetivo(sequelize);
@@ -75,6 +75,7 @@ const Ti = defineTi(sequelize);
 const ServiciosEstudiantiles = defineServicios(sequelize);
 const Facultad= defineFacultad(sequelize);
 const Notificacion = defineNotificacion(sequelize);
+const Comite = defineComite(sequelize);
 // Crea la instancia de Sequelize
 
 
@@ -133,48 +134,45 @@ Recurso.belongsToMany(Evento, {
   otherKey:'idevento',
   as: 'Eventos'
 });
-Objetivo.hasMany(Argumentacion, { foreignKey: 'idobjetivo', as: 'Argumentaciones' });
+Objetivo.hasMany(Argumentacion, { foreignKey: 'idobjetivo', as: 'argumentaciones' });
 Argumentacion.belongsTo(Objetivo, { foreignKey: 'idobjetivo' });
 Resultado.belongsTo(Evento, { foreignKey: 'idevento',as:'evento' });
 
-User.hasOne(Administrador,{foreignKey:'idusuario', as: 'Administrador'});
+User.hasOne(Administrador,{foreignKey:'idusuario', as: 'administrador'});
 Administrador.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Admisiones,{foreignKey:'idusuario', as: 'Admisiones'});
+User.hasOne(Admisiones,{foreignKey:'idusuario', as: 'admisiones'});
 Admisiones.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Alumno,{foreignKey:'idusuario', as: 'Alumno'});
+User.hasOne(Alumno,{foreignKey:'idusuario', as: 'alumno'});
 Alumno.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Comunicacion,{foreignKey:'idusuario', as: 'Comunicacion '});
+User.hasOne(Comunicacion,{foreignKey:'idusuario', as: 'comunicacion'});
 Comunicacion.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Daf,{foreignKey:'idusuario', as: 'Daf '});
+User.hasOne(Daf,{foreignKey:'idusuario', as: 'daf '});
 Daf.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Academico,{foreignKey:'idusuario', as: 'Academico '});
-Academico.belongsTo(User,{foreignKey:'idusuario'});
+User.hasOne(Academico,{foreignKey:'idusuario', as: 'academico'});
+Academico.belongsTo(User,{foreignKey:'idusuario', as: 'user'});
 
-User.hasOne(Estudiantes,{foreignKey:'idusuario', as: 'Estudiantes '});
+User.hasOne(Estudiantes,{foreignKey:'idusuario', as: 'estudiantes '});
 Estudiantes.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Externo,{foreignKey:'idusuario', as: 'Externo '});
+User.hasOne(Externo,{foreignKey:'idusuario', as: 'externo '});
 Externo.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(Ti,{foreignKey:'idusuario', as: 'Ti '});
+User.hasOne(Ti,{foreignKey:'idusuario', as: 'ti '});
 Ti.belongsTo(User,{foreignKey:'idusuario'});
 
-User.hasOne(ServiciosEstudiantiles,{foreignKey:'idusuario', as: 'ServiciosEstudiantiles '});
+User.hasOne(ServiciosEstudiantiles,{foreignKey:'idusuario', as: 'serviciosEstudiantiles '});
 ServiciosEstudiantiles.belongsTo(User,{foreignKey:'idusuario'});
 
-Facultad.hasMany(Academico, { foreignKey: 'idfacultad', sourceKey: 'idfacultad' });
-Academico.belongsTo(Facultad, { foreignKey: 'idfacultad', targetKey: 'idfacultad' });
+Academico.belongsTo(Facultad, { foreignKey: 'idfacultad', as:'facultad' });
+Facultad.hasMany(Academico, { foreignKey: 'idfacultad', as: 'academicos' });
 
 Notificacion.hasMany(Administrador,{foreignKey:'idnotificacion',sourceKey:'idnotificacion'})
 Administrador.belongsTo(Notificacion,{foreignKey:'idnotificaion', targetKey:'idnotificacion'})
-
-Evento.belongsTo(User,{foreignKey:'creadorid', as:'creadorEvento'});
-User.hasMany(Evento,{foreignKey:'creadorid', as:'eventosCreados'});
 
 Administrador.hasMany(Evento,{foreignKey:'idadministrador', as:'eventos'});
 Evento.belongsTo(Administrador,{foreignKey:'admin_aprobador', as:'usuario'});

@@ -5,8 +5,8 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
 // Función para generar JWT (sin cambios)
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (idusuario) => {
+  return jwt.sign({ idusuario }, process.env.JWT_SECRET, {
     expiresIn: '30d',
   });
 };

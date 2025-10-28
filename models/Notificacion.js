@@ -19,7 +19,7 @@ const defineNotificacion = (sequelize) => {
   idevento: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    References:{model:'evento',
+    References:{model:'Evento',
       key:'idEvento'
     }
   },
@@ -42,12 +42,18 @@ const defineNotificacion = (sequelize) => {
   event_data: {
     type: DataTypes.JSON,
     allowNull: true
-  }
+  },
+  created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    }
 }, {
   tableName: 'notificacion',
-  timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  timestamps: false,
 });
 return notificacion;
 };

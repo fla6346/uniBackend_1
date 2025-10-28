@@ -1,5 +1,4 @@
 import express from 'express';
-<<<<<<< HEAD
 import { sequelize, Evento, Objetivo, Resultado, ObjetivoPDI } from '../config/db.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import { 
@@ -8,22 +7,24 @@ import {
   aprobarEvento,
   rechazarEvento
 } from '../controllers/proyectoController.js';
+import {
+  createNotification,
+  getUserNotifications,
+  markAsRead,
+  getUnreadCount
+} from '../controllers/notificationController.js';
 const router = express.Router();
 router.get('/aprobados',protect, getApprovedEvents);
 router.get('/pendientes', getEventosNoAprobados);
 router.put('/:id/approve', aprobarEvento);
 router.put('/:id/reject', rechazarEvento);
+router.post('/', createNotification);
+router.get('/', getUserNotifications);
+router.patch('/:id/read', markAsRead);
+router.get('/unread-count', getUnreadCount);
+//router.get('/notificaciones/reenviar',reenviarNotificacion);
 // 1. OBTENER NOTIFICACIONES DEL USUARIO
 /*router.get('/user', authenticateToken, async (req, res) => {
-=======
-import db from '../config/database.js';
-import { authenticateToken, requireRole } from '../middleware/authMiddleware.js';
-
-const router = express.Router();
-
-// 1. OBTENER NOTIFICACIONES DEL USUARIO
-router.get('/user', authenticateToken, async (req, res) => {
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
   const userId = req.user.id;
   
   try {
@@ -185,9 +186,5 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     });
   }
 });
-<<<<<<< HEAD
 */
-=======
-
->>>>>>> f102db18a9ba19d1cb87246acae9cb5ab16a009f
 export default router;

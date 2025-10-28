@@ -13,8 +13,8 @@ export default (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'evento', // Nombre de la tabla referenciada
-        key: 'idevento', // Columna referenciada
+        model: 'evento',
+        key: 'idevento',
       },
     },
     satisfaccion_real: {

@@ -13,7 +13,7 @@ const defineAcademico = (sequelize)=>{
       allowNull: false,
       unique: true,
       references:{
-        model:'usuario',
+        model:'Usuario',
         key:'idusuario'
       }
     },
@@ -21,7 +21,7 @@ const defineAcademico = (sequelize)=>{
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'facultad',
+        model: 'Facultad',
         key: 'idfacultad'
     }
   },
@@ -31,7 +31,7 @@ const defineAcademico = (sequelize)=>{
     },
     // Otros campos específicos de Administrador
   }, {
-    tableName: 'directores',
+    tableName: 'academico',
     timestamps: false // Opcional: si no quieres timestamps en esta tabla
   });
 
