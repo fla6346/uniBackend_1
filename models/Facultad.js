@@ -1,9 +1,6 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-
-const defineFacultad = (sequelize) => {
+export default (sequelize, DataTypes) => {
   const Facultad = sequelize.define('Facultad', {
-    idfacultad: {
+    facultad_id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
@@ -11,7 +8,8 @@ const defineFacultad = (sequelize) => {
     },
     nombre_facultad: {
       type: DataTypes.STRING(255),
-      allowNull: false
+      allowNull: false,
+      field: 'nombre_facultad'
     },
     codigo: {
       type: DataTypes.STRING(50),
@@ -25,10 +23,14 @@ const defineFacultad = (sequelize) => {
   }, {
     tableName: 'facultad',
     timestamps: false,
-    underscored: true
   });
+
+  Facultad.associate = function(models) {
+    Facultad.hasMany(models.Academico, {
+      foreignKey: 'idfacultad',
+      as: 'academicos'
+    });
+  };
 
   return Facultad;
 };
-
-export default defineFacultad;

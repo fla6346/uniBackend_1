@@ -1,9 +1,6 @@
-// backend/models/User.js
-import { DataTypes } from 'sequelize';
-import {sequelize}  from '../config/db.js';
 import bcrypt from 'bcryptjs';
 
-const defineUser = (sequelize) => { 
+export default (sequelize,DataTypes) => { 
   const User = sequelize.define('User', {
     idusuario: {
       type: DataTypes.INTEGER,
@@ -78,15 +75,16 @@ const defineUser = (sequelize) => {
       unique: true,
       field: 'telegram_chat_id'
     },
-    created_at: { // Coincide con tu DB
+    created_at: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
+    defaultValue: DataTypes.NOW 
   },
-  updated_at: { // Coincide con tu DB
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
+    updated_at: { 
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    }, 
   },
-  }, {
+  {
     tableName: 'usuario',
     timestamps: false,
     hooks: {
@@ -116,8 +114,39 @@ const defineUser = (sequelize) => {
   User.prototype.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.contrasenia);
   };
+      User.associate = function(models){
+        User.hasOne(models.Administrador,{foreignKey:'idusuario', as: 'administrador'});
+        User.hasOne(models.Admisiones,{foreignKey:'idusuario', as: 'admisiones'});
+        //User.hasOne(models.Alumno,{foreignKey:'idusuario', as: 'alumno'});
+        User.hasOne(models.Comunicacion,{foreignKey:'idusuario', as: 'comunicacion'});
+        
+        
+        
 
-  return User;
+       User.hasOne(models.Daf,{foreignKey:'idusuario', as: 'daf'});
+       User.hasOne(models.Academico,{foreignKey:'idusuario', as: 'academico'});
+      //  User.hasOne(models.Estudiantes,{foreignKey:'idusuario', as: 'estudiantes '});
+       User.hasOne(models.Externo,{foreignKey:'idusuario', as: 'externo'});
+       User.hasOne(models.Ti,{foreignKey:'idusuario', as: 'ti'});
+    
+       User.hasOne(models.Recursos,{foreignKey:'idusuario', as: 'recursos'});
+       User.belongsToMany(models.Comite, {through:'usuario_comite', foreignKey: 'idusuario',  otherKey: 'idcomite', as: 'comites'});
+       /* User.hasOne(models.ServiciosEstudiantiles,{foreignKey:'idusuario', as: 'serviciosEstudiantiles '});*/
+       User.hasMany(models.Evento, { as: 'eventosCreados', foreignKey: 'idacademico' });
+  User.belongsToMany(models.Evento, {
+    through: models.Comite,
+    as: 'eventosEnComite',
+    foreignKey: 'idusuario',
+    otherKey: 'idevento'
+  });
+  User.belongsTo(models.Facultad,{foreignKey:'facultad_id', as: 'facultad'})
+      if (models.Notificacion && typeof models.Notificacion.hasMany === 'function') {
+    User.hasMany(models.Notificacion, {
+      foreignKey: 'idusuario',
+      as: 'notificaciones'
+    });
+  }
+
+}
+       return User;
 };
-
-export default defineUser;

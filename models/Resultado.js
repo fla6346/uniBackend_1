@@ -1,8 +1,5 @@
 // models/Objetivo.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-import Evento from '../models/Event.js';
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
   const Resultado = sequelize.define('Resultado', {
     idresultados_esperados: {
       type: DataTypes.INTEGER,
@@ -39,6 +36,10 @@ export default (sequelize) => {
     tableName: 'resultado', // Nombre de la tabla "hija"
     timestamps: false,
   });
+  Resultado.associate = function(models){
+    Resultado.belongsTo(models.Evento, { foreignKey: 'idevento',as:'evento' });
+
+  }
   return Resultado;
 };
 //Evento.hasOne(Resultado, { foreignKey: 'idevento', as: 'resultado'});

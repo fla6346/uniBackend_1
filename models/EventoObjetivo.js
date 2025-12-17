@@ -1,16 +1,11 @@
-// models/EventoObjetivo.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-import Objetivo from '../models/Objetivo.js';
-import Evento from '../models/Event.js'
-export default(sequelize)=>{
+export default(sequelize,DataTypes)=>{
 
 const EventoObjetivo = sequelize.define('EventoObjetivo', {
   idevento: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     references:{
-      model:'Evento',
+      model:'evento',
       key:'idevento'
     }
   },
@@ -18,7 +13,7 @@ const EventoObjetivo = sequelize.define('EventoObjetivo', {
     type: DataTypes.INTEGER,
     primaryKey: true,
     references:{
-      model:'Objetivo',
+      model:'objetivos',
       key: 'idobjetivo'
     }
   },
@@ -29,6 +24,7 @@ const EventoObjetivo = sequelize.define('EventoObjetivo', {
 }, {
   tableName: 'evento_objetivos',
   timestamps: false,
+  id: false
 });
 
 return EventoObjetivo;

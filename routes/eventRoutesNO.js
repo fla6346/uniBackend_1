@@ -7,8 +7,8 @@ import {
   getEventoById,
   updateEvento,
   deleteEvento,
-} from '../controllers/eventController.js';
-
+} from '../controllers/eventControllerA.js';
+import {getModels} from '../models/index.js ';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
 router.post('/', protect, createEvento);

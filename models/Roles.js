@@ -1,8 +1,4 @@
-import { DataTypes } from 'sequelize';
-//import sequelize from '../config/db.js';
-
-
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
 const Role = sequelize.define('Role', {
   idrol: {
     type: DataTypes.INTEGER,

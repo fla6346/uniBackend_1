@@ -1,6 +1,4 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from '../config/db.js';
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
   const Segmento = sequelize.define(
     'Segmento',
     {

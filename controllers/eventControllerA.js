@@ -1,8 +1,4 @@
-import { sequelize,
-   Evento,
-   EventoTipo,
-   Objetivo,
-   ObjetivoSegmento, Resultado, ObjetivoPDI, EventoObjetivo,EventoRecurso,Recurso } from '../config/db.js';
+import {  getModels} from '../models/index.js';
 import asyncHandler from 'express-async-handler';
 
 // --- CONSTANTES ---
@@ -33,7 +29,7 @@ export const createEvento = async (req, res) => {
     const data = req.body;
 
     // 1. Crear el Evento principal
-    const nuevoEvento = await Evento.create({
+    const nuevoEvento = await models.Evento.create({
       nombreevento: data.nombreevento,
       lugarevento: data.lugarevento,
       fechaevento: data.fechaevento,
@@ -74,7 +70,7 @@ export const createEvento = async (req, res) => {
         idobjetivo: objetivo.idobjetivo,
         texto_personalizado_relacion: data.objetivos[index]?.texto_personalizado_relacion || null
       }));
-      await EventoObjetivo.bulkCreate(relacionesEventoObjetivo, { transaction: t });
+      await models.EventoObjetivo.bulkCreate(relacionesEventoObjetivo, { transaction: t });
 
       idsObjetivosVinculadosAlEvento = nuevosObjetivosCreados.map(obj => obj.idobjetivo);
       console.log(`✓ ${idsObjetivosVinculadosAlEvento.length} objetivos asociados a través de EventoObjetivo.`);
@@ -84,12 +80,12 @@ export const createEvento = async (req, res) => {
     const objetivosPDIArray = safeJsonParse(data.objetivos_pdi, []);
     const descripcionesPDI = objetivosPDIArray.filter(desc => desc && desc.trim() !== '');
     if (descripcionesPDI.length > 0) {
-      const objetivoGeneralPDI = await Objetivo.create({
+      const objetivoGeneralPDI = await models.Objetivo.create({
         idtipoobjetivo: OTRO_TIPO_ID,
         texto_personalizado: `PDI - ${descripcionesPDI.length} objetivos`,
       }, { transaction: t });
 
-      await EventoObjetivo.create({
+      await models.EventoObjetivo.create({
         idevento: nuevoEventoId,
         idobjetivo: objetivoGeneralPDI.idobjetivo,
         texto_personalizado_relacion: 'Objetivo PDI General'
@@ -143,7 +139,7 @@ export const createEvento = async (req, res) => {
     const resultados = typeof data.resultados_esperados === 'string'
       ? JSON.parse(data.resultados_esperados)
       : (data.resultados_esperados || {});
-    await Resultado.create({
+    await models.Resultado.create({
       idevento: nuevoEventoId,
       participacion_esperada: resultados.participacion || null,
       satisfaccion_esperada: resultados.satisfaccion || null,
@@ -168,7 +164,7 @@ export const createEvento = async (req, res) => {
    const recursosNuevos = data.recursos_nuevos || [];
     if (Array.isArray(recursosNuevos) && recursosNuevos.length > 0) {
       // Crear los recursos nuevos
-      const nuevosRecursosCreados = await Recurso.bulkCreate(recursosNuevos, { transaction: t, returning: true });
+      const nuevosRecursosCreados = await models.Recurso.bulkCreate(recursosNuevos, { transaction: t, returning: true });
       // Asociar los recursos nuevos al evento
         console.log('Nuevos recursos creados:', nuevosRecursosCreados);
       const relacionesNuevosRecursos = nuevosRecursosCreados.map(recurso => ({
@@ -178,15 +174,32 @@ export const createEvento = async (req, res) => {
       await EventoRecurso.bulkCreate(relacionesNuevosRecursos, { transaction: t });
       console.log(`✓ ${recursosNuevos.length} recursos nuevos creados y asociados`);
     }
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+  const { Notificacion } = models;
+  if (Notificacion) {
+    const notificaciones = data.comite.map(idusuario => ({
+      idusuario: parseInt(idusuario, 10),
+      titulo: 'Nuevo evento asignado',
+      mensaje: `Has sido asignado al comité del evento "${data.nombreevento}".`,
+      tipo: 'nuevo_evento',
+      estado: 'no_leido',
+      created_at: new Date()
+    }));
 
+    await Notificacion.bulkCreate(notificaciones, { transaction: t });
+    console.log(`✓ ${notificaciones.length} notificaciones enviadas al comité.`);
+  } else {
+    console.warn('⚠️ Modelo Notificacion no disponible. Notificaciones omitidas.');
+  }
+}
     await t.commit();
 
     const eventoCompleto = await Evento.findByPk(nuevoEventoId, {
       include: [
-        { model: Objetivo, as: 'Objetivos', through: { attributes: [] } },
-        { model: Resultado, as: 'Resultados' },
-        { model: EventoTipo, as: 'TipoEvento' },
-        { model: Recurso, as: 'Recursos' },
+        { model: models.Objetivo, as: 'Objetivos', through: { attributes: [] } },
+        { model: models.Resultado, as: 'Resultados' },
+        { model: models.EventoTipo, as: 'TipoEvento' },
+        { model: models.Recurso, as: 'Recursos' },
       ]
     });
     res.status(201).json({ message: 'Evento creado exitosamente', evento: eventoCompleto });
@@ -204,7 +217,7 @@ export const createEvento = async (req, res) => {
 };
 
 export const getAllEventos = asyncHandler(async (req, res) => {
-  const eventos = await Evento.findAll({
+  const eventos = await models.Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
     attributes: { exclude: ['organizerId', 'categoryId', 'locationId'] }
   });
@@ -220,7 +233,7 @@ export const getAllEventos = asyncHandler(async (req, res) => {
 
 export const fetchAllEvents = async () => {
   try {
-    const eventos = await Evento.findAll({
+    const eventos = await models.Evento.findAll({
       attributes: [
         'idevento',
         'nombreevento',
@@ -238,18 +251,19 @@ export const fetchAllEvents = async () => {
 
 export const getEventoById = asyncHandler(async (req, res) => {
   try {
-    const evento = await Evento.findByPk(req.params.id, {
+    const models = await getModels();
+    const evento = await models.Evento.findByPk(req.params.id, {
       attributes: {
         exclude: ['organizerId', 'categoryId', 'locationId']
       },
       include: [
-        { model: Resultado, as: 'Resultados' },
+        { model: models.Resultado, as: 'Resultados' },
         { 
-          model: Objetivo, 
+          model: models.Objetivo, 
           as: 'Objetivos',
           through: { attributes: ['texto_personalizado_relacion'] }
         },
-        { model: Recurso, as: 'Recursos' }
+        { model: models.Recurso, as: 'Recursos' }
       ]
     });
 
@@ -271,6 +285,48 @@ export const getEventoById = asyncHandler(async (req, res) => {
     });
   }
 });
+// Endpoint para que DAF solo vea SUS eventos aprobados
+export const getEventosAprobadosDaf = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const Evento = models.Evento;
+  
+  try {
+    // Solo eventos aprobados CREADOS POR EL USUARIO ACTUAL
+    const eventos = await Evento.findAll({
+      where: {
+        idacademico: req.user.idusuario,  // 👈 Filtrar por creador
+        estado: 'aprobado'
+      },
+      order: [['fechaevento', 'DESC']],
+      attributes: {
+        exclude: ['creadorid'] 
+      }
+    });
+
+    const eventosTransformados = eventos.map(evento => ({
+      idevento: evento.idevento,
+      nombreevento: evento.nombreevento || 'Sin título',
+      descripcion: evento.descripcion || 'Sin descripción',
+      fechaevento: evento.fechaevento,
+      horaevento: evento.horaevento,
+      lugarevento: evento.lugarevento || 'Sin ubicación',
+      responsable_evento: evento.responsable_evento || 'Sin organizador',
+      participantes_esperados: evento.participantes_esperados || 'No especificado',
+      estado: evento.estado || 'aprobado',
+      createdAt: evento.createdAt
+    }));
+
+    res.status(200).json(eventosTransformados);
+
+  } catch (error) {
+    console.error('Error al obtener eventos aprobados del usuario:', error);
+    res.status(500).json({ 
+      message: 'Error al cargar tus eventos aprobados',
+      error: error.message 
+    });
+  }
+});
+
 
 // ===== NUEVAS FUNCIONES DE APROBACIÓN =====
 
@@ -284,7 +340,7 @@ export const getEventoById = asyncHandler(async (req, res) => {
 
 export const updateEvento = asyncHandler(async (req, res) => {
   try {
-    const evento = await Evento.findByPk(req.params.id);
+    const evento = await models.Evento.findByPk(req.params.id);
 
     if (!evento) {
       return res.status(404).json({ message: 'Evento no encontrado' });
@@ -327,7 +383,7 @@ export const updateEvento = asyncHandler(async (req, res) => {
 
 export const deleteEvento = asyncHandler(async (req, res) => {
   try {
-    const evento = await Evento.findByPk(req.params.id);
+    const evento = await models.Evento.findByPk(req.params.id);
 
     if (!evento) {
       return res.status(404).json({ message: 'Evento no encontrado' });
@@ -415,7 +471,7 @@ export const fetchEventById = async (id) => {
   try {
     console.log(`[DB] Buscando evento con ID: ${id}`);
     
-    const evento = await Evento.findByPk(id, {
+    const evento = await models.Evento.findByPk(id, {
       attributes: {
         exclude: ['organizerId', 'categoryId', 'locationId']
       }

@@ -1,13 +1,10 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
 
-export default (sequelize) => {
-  const TipoObjetivo = sequelize.define('tipos_objetivo', {
+export default (sequelize, DataTypes) => {
+  const TipoObjetivo = sequelize.define('TipoObjetivo', {
     idtipoobjetivo: {
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true,
-      autoIncrement: true,
     },
   
     nombre_objetivo: {
@@ -18,6 +15,8 @@ export default (sequelize) => {
     tableName: 'tipos_objetivo',
     timestamps: false,
   });
-
+  TipoObjetivo.associate = (models) => {
+    TipoObjetivo.hasMany(models.Objetivo, { foreignKey: 'idtipoobjetivo', as: 'Objetivos' });
+  };
 return TipoObjetivo;
 };

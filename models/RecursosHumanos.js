@@ -1,7 +1,4 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineRecursos = (sequelize)=>{
+export default (sequelize,DataTypes)=>{
     const recursos=sequelize.define('Recursos',{
       idRecursos: { 
       type: DataTypes.INTEGER,
@@ -26,4 +23,3 @@ const defineRecursos = (sequelize)=>{
   return recursos;
 };
 
-export default defineRecursos;

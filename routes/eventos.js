@@ -1,6 +1,6 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { sequelize, Evento, Objetivo, Resultado, ObjetivoPDI } from '../config/db.js';
+import { getModels } from '../models/index.js';
 import { 
   createEvento,
   getAllEventos, 
@@ -8,9 +8,12 @@ import {
   updateEvento, 
   deleteEvento,
   getEventosNoAprobados,
+  getEventosAprobados,
   aprobarEvento,rechazarEvento,
-  debugEventoById,
-  getApprovedEvents,
+  //pendientes,
+  getDashboardStats,
+  getHistoricalData,
+  //getEventosPendientesPorArea
   } from '../controllers/proyectoController.js';
 import {protect,authorize} from '../middleware/authMiddleware.js';
 const router = express.Router();
@@ -20,19 +23,23 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/pendientes', getEventosNoAprobados);
-router.get('/aprobados', getApprovedEvents);
-
+router.get('/pendientes',protect, getEventosNoAprobados);
+router.get('/aprobados',protect, getEventosAprobados);
+//router.get('/listar-pendientes', pendientes); // si necesitas esta ruta
+//router.get('/pendientes',protect, getEventosPendientesPorArea);
+router.get('/dashboard/stats', protect, getDashboardStats);
+router.get('/dashboard/historical', protect, getHistoricalData);
+//router.get('/mios/aprobados',protect, getAprobados);
 router.put('/:id/approve', aprobarEvento);
 router.put('/:id/reject',rechazarEvento);
 
-router.get('/:id', getEventoById);
+router.get('/:id',protect, getEventoById);
 router.put('/:id', updateEvento);
 router.delete('/:id', deleteEvento);
-router.post('/', createEvento);
+router.post('/',protect, createEvento);
 router.get('/', getAllEventos);
 
-router.get('/debug/:id',debugEventoById);
+//router.get('/debug/:id',debugEventoById);
 
 
 

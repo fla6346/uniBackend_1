@@ -1,7 +1,4 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
   const ObjetivoPDI = sequelize.define('ObjetivoPDI', {
     idobjetivo_pdi: {
       type: DataTypes.INTEGER,
@@ -13,7 +10,7 @@ export default (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false, // ← Agregar allowNull: false para consistencia
       references: {
-        model: 'objetivos',
+        model: 'Objetivo',
         key: 'idobjetivo',
       },
     },
@@ -25,6 +22,8 @@ export default (sequelize) => {
     tableName: 'objetivo_pdi',
     timestamps: false,
   });
-
+    ObjetivoPDI.associate = function(models){
+      ObjetivoPDI.belongsTo(models.Objetivo, { foreignKey: 'idobjetivo', as: 'objetivo' });
+    }
   return ObjetivoPDI;
 };

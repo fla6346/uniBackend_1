@@ -1,8 +1,5 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineAcademico = (sequelize)=>{
-    const academico=sequelize.define('Academico',{
+export default (sequelize, DataTypes) => {
+  const Academico = sequelize.define('Academico', {
     idacademico: { 
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -12,30 +9,37 @@ const defineAcademico = (sequelize)=>{
       type: DataTypes.INTEGER,
       allowNull: false,
       unique: true,
-      references:{
-        model:'Usuario',
-        key:'idusuario'
+      references: {
+        model: 'usuario',
+        key: 'idusuario'
       }
     },
-    idfacultad:{
+    idfacultad: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'Facultad',
+        model: 'facultad',
         key: 'idfacultad'
-    }
-  },
-    nivelAcceso: {
-      type: DataTypes.INTEGER,
-      defaultValue: 3
+      }
     },
-    // Otros campos específicos de Administrador
+    idcarrera: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'carrera',
+        key: 'idcarrera'
+      }
+    }
   }, {
     tableName: 'academico',
-    timestamps: false // Opcional: si no quieres timestamps en esta tabla
+    timestamps: false 
   });
 
-  return academico;
-};
+  Academico.associate = function(models) {
+    Academico.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
+    Academico.belongsTo(models.Facultad, { foreignKey: 'idfacultad', as: 'facultad' });
+    Academico.belongsTo(models.Carrera, { foreignKey: 'idcarrera', as: 'carrera' });
+  };
 
-export default defineAcademico;
+  return Academico;
+};

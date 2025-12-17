@@ -1,8 +1,6 @@
 // models/Participante.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
 
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
 const Subcategoría = sequelize.define('Subcategoria', {
   idsubcategoria: {
     type: DataTypes.INTEGER,
@@ -13,15 +11,7 @@ const Subcategoría = sequelize.define('Subcategoria', {
     type: DataTypes.STRING(100),
     allowNull: false
   },
-  idclasificacion:{
-     type: DataTypes.INTEGER,
-      allowNull: false,
-      unique: true,
-    references:{
-        model:'ClasificacionEstrategica',
-        key:'idclasificacion'
-      }
-  }
+  
 }, {
   tableName: 'subcategoria',
   timestamps: false // O configúralo si tienes columnas createdAt/updatedAt

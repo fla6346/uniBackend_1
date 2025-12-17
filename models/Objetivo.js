@@ -1,36 +1,56 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-
-
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
   const Objetivo = sequelize.define('Objetivo', {
     idobjetivo: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    idtipoobjetivo: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
+   
     texto_personalizado: {
       type: DataTypes.STRING,
       allowNull: true,
       field: 'texto_personalizado',
     },
-    idevento:{
-       type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'evento',
-      key: 'idevento'
-    }
-    }
+    idargumentacion: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'idargumentacion',
+      references: { model: 'argumentacion', key: 'idargumentacion' }
+    },
+    idtipoobjetivo: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      field: 'idtipoobjetivo',
+      references: { model: 'tipo_objetivo', key: 'idtipoobjetivo' }
+
+    },   
      
   }, {
     tableName: 'objetivos', // Nombre de la tabla "hija"
     timestamps: false,
   });
+  /*field: 'idadministrador', // ✅ Agregado field
+      references: { model: 'usuario', key: 'idusuario' }
+*/
+Objetivo.associate = function(models) {
+  Objetivo.belongsToMany(models.Evento, { 
+  through: {
+    model:'evento_objetivos',
+  },
+  foreignKey: 'idobjetivo',
+  otherKey:'idevento' ,
+  as: 'Eventos'});
 
+  Objetivo.hasMany(models.ObjetivoPDI, {
+     foreignKey: 'idobjetivo', as: 'ObjetivoPDIs' });
+  
+  Objetivo.belongsTo(models.TipoObjetivo, {
+    foreignKey:'idtipoobjetivo',as:'TipoObjetivo'});
+  Objetivo.belongsToMany(models.Segmento, {
+    through: 'objetivo_segmento', foreignKey: 'idobjetivo',
+    otherKey: 'idsegmento',
+    as: 'Segmentos'});
+  Objetivo.hasMany(models.Argumentacion, { foreignKey: 'idobjetivo', as: 'argumentaciones' });
+  }
 return Objetivo;
 };

@@ -1,8 +1,5 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineServicios = (sequelize)=>{
-    const servicios=sequelize.define('ServiciosEstudiantiles',{
+export default (sequelize,DataTypes)=>{
+    const Servicios=sequelize.define('ServiciosEstudiantiles',{
       idServiciosEstudiantiles: { 
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -23,7 +20,6 @@ const defineServicios = (sequelize)=>{
     timestamps: false // Opcional: si no quieres timestamps en esta tabla
   });
 
-  return servicios;
+  return Servicios;
 };
 
-export default defineServicios;

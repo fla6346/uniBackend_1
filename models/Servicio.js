@@ -1,7 +1,5 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-import bcrypt from 'bcryptjs';
 
+export default (sequelize,DataTypes) => {
 const Servicio=sequelize.define('Servicio',{
     idservicio:{
         type: DataTypes.INTEGER,
@@ -16,10 +14,11 @@ const Servicio=sequelize.define('Servicio',{
         field: 'nombreservicio',
 
     },
-    fechadeentrega:{
+    fechadeentrega:
+        DataTypes.DATE,
 
 
-    },
+    
     caracteristicas:{
         type: DataTypes.STRING(20),
         allowNull: false,
@@ -41,5 +40,6 @@ const Servicio=sequelize.define('Servicio',{
     
 },{
     tableName:'servicio',
-   
-})
+});
+ return Servicio;
+};

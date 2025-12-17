@@ -1,23 +1,20 @@
-import { sequelize } from '../config/db.js'
-import { DataTypes } from 'sequelize';
 
-const defineComite = (sequelize) =>{
+export default (sequelize,DataTypes) =>{
     const comite = sequelize.define('Comite',{
-     ideventocomite: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-    field: 'ideventocomite'
-  },
+   
   idevento: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'idevento'
+    primaryKey: true,
+    field: 'idevento',
+      references: { model: 'evento', key: 'idevento' }
   },
-  idusuario: {
+  idComite: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'idusuario'
+    primaryKey: true,
+    field: 'idcomite',
+    references: { model: 'comite', key: 'idcomite' }
   },
   created_at: {
     type: DataTypes.DATE,
@@ -30,4 +27,3 @@ const defineComite = (sequelize) =>{
 });
 return comite;
 }
-export default defineComite;

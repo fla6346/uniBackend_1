@@ -1,7 +1,4 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineComunicacion = (sequelize)=>{
+export default (sequelize,DataTypes)=>{
     const comunicacion=sequelize.define('Comunicacion',{
        idComunicacion: { 
       type: DataTypes.INTEGER,
@@ -25,5 +22,3 @@ const defineComunicacion = (sequelize)=>{
 
   return comunicacion;
 };
-
-export default defineComunicacion;

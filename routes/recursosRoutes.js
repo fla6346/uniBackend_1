@@ -1,18 +1,10 @@
-import express from 'express';
-const router= express.Router();
+// routes/recursoRoutes.js
+import { Router } from 'express';
+import { createRecurso } from '../controllers/recursoController.js';
+import { protect } from '../middleware/authMiddleware.js'; // opcional, si requiere autenticación
 
-router.get('/', async(req,res)=>{
-    try{
-        console.log('Modelo Recurso:', req.app.get('models').Recurso);
-        const recursos=await req.app.get('models').Recurso.findAll();
-        res.json(recursos);
+const router = Router();
 
-    }catch(error){
-          console.log('Entrando al catch');
-         console.log(error);
-        res.status(500).json({
-            error:'Error al obtener los recurosos'
-        });
-    }
-})
+router.post('/', protect, createRecurso); 
+
 export default router;

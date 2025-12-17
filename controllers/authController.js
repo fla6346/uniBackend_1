@@ -1,5 +1,5 @@
 // backend/controllers/authController.js
-import { User,Facultad,Academico } from '../config/db.js';
+import { getModels } from '../models/index.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
@@ -10,103 +10,168 @@ const generateToken = (idusuario) => {
     expiresIn: '30d',
   });
 };
-
-export const registerUser = async (req, res) => {
-    console.log('------------------- authController.js - registerUser INICIO -------------------');
-    console.log('REQ.BODY COMPLETO:', JSON.stringify(req.body, null, 2));
   
-    const {
-        userName,
-        nombre,
-        apellidopat, 
-        apellidomat, 
-        email, 
-        contrasenia, 
-        role, 
-        habilitado,
-        facultad_id
-    } = req.body;
+export const registerUser = async (req, res) => {
+ const models = await getModels();
+  const User = models.User;
+  const Academico = models.Academico;
+  const Carrera = models.Carrera;
+  const Facultad = models.Facultad;
+  const {
+    userName,
+    nombre,
+    apellidopat, 
+    apellidomat, 
+    email, 
+    contrasenia, 
+    role, 
+    habilitado = 1,
+    idcarrera,
+    idfacultad,
+  } = req.body;
 
-    const username = req.body.username || req.body.userName;
-    
-    // Validar que facultad_id exista
-    if (facultad_id) {
-      const facultad = await Facultad.findByPk(facultad_id);
-      if (!facultad) {
-        return res.status(400).json({ message: 'Error de validación', errors: [{ message: 'Facultad no encontrada' }] });
+  const username = req.body.username || req.body.userName;
+  try {
+    if (!username || !contrasenia || !email) {
+      return res.status(400).json({ message: 'Por favor, proporciona nombre de usuario, contraseña y correo electrónico.' });
+    }
+
+    const userExistsByUserName = await User.findOne({ where: { username } });
+    if (userExistsByUserName) {
+      return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
+    }
+
+    const userExistsByEmail = await User.findOne({ where: { email } });
+    if (userExistsByEmail) {
+      return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
+    }
+
+   let validatedCarreraId = null;
+let validatedFacultadId = null;
+if (role === 'academico') {
+  if (!idcarrera) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'idcarrera es requerido para el rol académico', param: 'idcarrera' }]
+    });
+  }
+  
+  if (!idfacultad) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'idfacultad es requerido para el rol académico', param: 'idfacultad' }]
+    });
+  }
+
+  const cid = parseInt(idcarrera);
+  const fid = parseInt(idfacultad);
+  
+  if (!cid || cid <= 0) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'idcarrera debe ser un número válido', param: 'idcarrera' }]
+    });
+  }
+  
+  if (!fid || fid <= 0) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'idfacultad debe ser un número válido', param: 'idfacultad' }]
+    });
+  }
+
+  const carrera = await Carrera.findByPk(cid);
+  const facultad = await Facultad.findByPk(fid);
+
+  if (!carrera) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'Carrera no encontrada', param: 'idcarrera' }]
+    });
+  }
+  
+  if (!facultad) {
+    return res.status(400).json({
+      message: 'Error de validación',
+      errors: [{ message: 'Facultad no encontrada', param: 'idfacultad' }]
+    });
+  }
+  
+  
+  validatedCarreraId = cid;
+  validatedFacultadId = fid;
+}
+
+    const user = await User.create({
+      username,
+      contrasenia,
+      email,
+      nombre,
+      apellidopat,
+      apellidomat,
+      role: role || 'student',
+      habilitado: habilitado || '1',
+    },{
+      returning: true
+    });
+    console.log('USUARIO CREADO:', user.toJSON());
+
+    if (role === 'academico' && validatedCarreraId && validatedFacultadId) {
+      console.log('ID del usuario:', user.idusuario);
+      console.log('ID de carrera:', validatedCarreraId);
+      console.log('ID de facultad:', validatedFacultadId);
+
+      if (!user.idusuario) {
+        console.error('Usuario creado pero sin ID:', user.toJSON());
+        return res.status(500).json({ message: 'Error al crear el usuario: ID no generado.' });
+      }
+      
+      try {
+        const academico = await Academico.create({
+          idusuario: user.idusuario,
+          idcarrera: validatedCarreraId,
+          idfacultad: validatedFacultadId
+        });
+        console.log('Académico creado:', academico.toJSON());
+      } catch (academicoError) {
+        console.error('Error al crear académico:', academicoError);
+        throw academicoError;
       }
     }
-    if (role === 'academico' && !facultad_id) {
-      return res.status(400).json({ message: 'Error de validación', errors: [{ message: 'facultad_id es requerido para el rol academico' }] });
-    }
-    try {
-        // 3. Valida los datos de entrada usando la variable normalizada 'username'.
-        if (!username || !contrasenia || !email) {
-            return res.status(400).json({ message: 'Por favor, proporciona nombre de usuario, contraseña y correo electrónico.' });
-        }
 
-        // 4. Busca en la base de datos usando la clave correcta del modelo ('username').
-        const userExistsByUserName = await User.findOne({ where: { username: username } });
-        if (userExistsByUserName) {
-            return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
-        }
+    const token = generateToken(user.idusuario);
+    res.status(201).json({
+      token,
+      user: {
+        id: user.idusuario,
+        username: user.username,
+        email: user.email,
+        nombre: user.nombre,
+        apellidopat: user.apellidopat,
+        apellidomat: user.apellidomat,
+        role: user.role,
+        habilitado: user.habilitado,
+        ...(role === 'academico' && { idcarrera: validatedCarreraId })
+      },
+    });
 
-        const userExistsByEmail = await User.findOne({ where: { email } });
-        if (userExistsByEmail) {
-            return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
-        }
-
-        // 5. Crea el usuario usando la clave correcta del modelo ('username').
-        //    El hook 'beforeCreate' en el modelo se encargará de hashear la contraseña.
-        const user = await User.create({
-            username: username, // <-- Se usa la variable normalizada
-            contrasenia,
-            email,
-            nombre,
-            apellidopat,
-            apellidomat,
-            role: role || 'student',
-            habilitado: habilitado || '1',
-        });
-        if (role === 'academico') {
-      await Academico.create({
-        user_id: user.idusuario,
-        facultad_id
-      });
+  } catch (error) {
+    console.error('Error en registerUser:', error);
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ message: 'Error de validación', errors: error.errors.map(e => e.message) });
     }
-        if (user) {
-            // 6. Genera el token y responde.
-            const token = generateToken(user.idusuario);
-            res.status(201).json({
-                token,
-                user: {
-                    id: user.idusuario,
-                    username: user.username,
-                    email: user.email,
-                    nombre: user.nombre,
-                    apellidopat: user.apellidopat,
-                    apellidomat: user.apellidomat,
-                    role: user.role,
-                    habilitado: user.habilitado,
-                },
-            });
-        } else {
-            res.status(400).json({ message: 'Datos de usuario inválidos, no se pudo crear el usuario.' });
-        }
-    } catch (error) {
-        console.error('Error en registerUser:', error);
-        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
-            return res.status(400).json({ message: 'Error de validación', errors: error.errors.map(e => e.message) });
-        }
-        res.status(500).json({ message: 'Error del servidor durante el registro.' });
-    }
+    res.status(500).json({ message: 'Error del servidor durante el registro.' });
+  }
 };
 
 export const loginUser = async (req, res) => {
+  const models = await getModels();
+  const User = models.User;
+
   console.log('---------------------------------------------------------------');
   console.log('Backend /api/auth/login - req.body recibido:', req.body);
   const { email, password } = req.body;
-
+ 
   try {
     if (!email || !password) {
       console.warn('BACKEND Validación fallida: email o password faltantes...');
@@ -114,6 +179,7 @@ export const loginUser = async (req, res) => {
     }
 
     const user = await User.findOne({ where: { email } });
+    
     console.log('LOGIN ATTEMPT - Usuario encontrado en BD:', user ? user.toJSON() : null); 
     
     if (!user) {

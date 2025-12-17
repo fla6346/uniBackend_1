@@ -1,32 +1,25 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineAdministrador = (sequelize,User)=>{
-    const administrador=sequelize.define('UserAdministrador',{
-    idadministrador: { // Clave primaria para esta tabla específica
+import {getModels} from '../models/index.js ';
+export default (sequelize, DataTypes) => {
+  const Administrador = sequelize.define('Administrador', {
+    idadministrador: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
-    idusuario: { 
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      unique: true,
-      references:{
-        model:User,
-        key:'idusuario'
-      }
-    },
-    nivelAcceso: {
-      type: DataTypes.INTEGER,
-      defaultValue: 1
-    },
+    idusuario: DataTypes.INTEGER,
+    // ... otros campos que tengas
   }, {
     tableName: 'administrador',
-    timestamps: false 
+    timestamps: false
   });
 
-  return administrador;
-};
+  Administrador.associate = function(models) {
+    Administrador.belongsTo(models.User, {
+      foreignKey: 'idusuario',
+      as: 'usuario'
+    });
+    
+  };
 
-export default defineAdministrador;
+  return Administrador;
+};

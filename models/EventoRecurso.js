@@ -1,24 +1,12 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from '../config/db.js';
-import Evento from "../models/Event.js";
-import Recurso from '../models/Recurso.js'
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
   const EventoRecurso = sequelize.define("EventoRecurso",{
       idevento: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        references:{
-          model:Evento,
-          key:'idevento'
-        }
       },
       idrecurso: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        references:{
-          model:Recurso,
-          key:'idrecurso',
-        }
       },
     },
     {
@@ -26,6 +14,18 @@ export default (sequelize) => {
       timestamps: false,
     }
   );
+   EventoRecurso.associate = function(models) {
+    EventoRecurso.belongsTo(models.Evento, {
+      foreignKey: 'idevento',
+      as: 'evento'
+    });
+    
+    EventoRecurso.belongsTo(models.Recurso, {
+      foreignKey: 'idrecurso', 
+      as: 'recurso'
+    });
+  };
+
 
   return EventoRecurso;
 }

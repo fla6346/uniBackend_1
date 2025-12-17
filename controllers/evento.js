@@ -1,6 +1,5 @@
-import { sequelize, Evento, Objetivo, Resultado, ObjetivoPDI, TipoObjetivo, Segmento } from '../config/db.js';
+import {getModels} from '../models/index.js ';
 import asyncHandler from 'express-async-handler';
-import ObjetivoSegmento from '../models/ObjetivoSegmento.js';
 
 // Constants for better maintainability
 const OBJETIVO_TYPES = {
@@ -154,6 +153,7 @@ export const createEvento = async (req, res) => {
         message: 'Campos requeridos: nombreevento, fechaevento' 
       });
     }
+const responsableCompleto = `${req.user.nombre} ${req.user.apellidopat || ''}`.trim() || 'Responsable no especificado';
 
     // Create main event
     const nuevoEvento = await Evento.create({
@@ -161,7 +161,8 @@ export const createEvento = async (req, res) => {
       lugarevento: data.lugarevento,
       fechaevento: data.fechaevento,
       horaevento: data.horaevento,
-      responsable_evento: data.responsable_evento,
+      responsable_evento: responsableCompleto,
+      idacademico: data.user.idusuario
     }, { transaction: t });
 
     const nuevoEventoId = nuevoEvento.idevento;
@@ -299,6 +300,49 @@ export const createEvento = async (req, res) => {
         await Recurso.bulkCreate(recursosACrear, { transaction: t });
         console.log('Recursos creados:', recursosACrear.length);
       }
+    }
+
+       try {
+      const { UserComite } = await getModels();
+
+      // 1. Obtener los IDs de los usuarios en el comité del evento recién creado
+      const miembrosComite = await UserComite.findAll({
+        where: { idevento: nuevoEventoId },
+        attributes: ['idusuario'],
+        transaction: t // Usa la misma transacción
+      });
+
+      const idsDestinatarios = miembrosComite.map(m => m.idusuario);
+
+      if (idsDestinatarios.length > 0) {
+        const { Notification } = await import('./notificationController.js');
+        
+        const notificationPayload = {
+          title: 'Nuevo evento en tu comité',
+          message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
+          type: 'info',
+          idevento: nuevoEventoId,
+          idusuarios: idsDestinatarios
+        };
+
+        await Notification(
+          { body: notificationPayload },
+          {
+            status: (statusCode) => ({
+              json: (data) => {
+                if (statusCode >= 400) {
+                  console.error('⚠️ Error al enviar notificación desde createEvento:', data);
+                } else {
+                  console.log(`✅ Notificaciones enviadas a ${idsDestinatarios.length} miembros del comité.`);
+                }
+              }
+            })
+          }
+        );
+      }
+
+    } catch (notificationError) {
+      console.error('❗ Error no crítico al notificar al comité:', notificationError);
     }
 
     await t.commit();

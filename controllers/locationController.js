@@ -1,5 +1,5 @@
 // D:\Nueva carpeta\backend\controllers\locationController.js
-import { Location } from '../config/db.js';
+import {getModels} from '../models/index.js ';
 
 export const getAllLocations = async (req, res) => {
   try {

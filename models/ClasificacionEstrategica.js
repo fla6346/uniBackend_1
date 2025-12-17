@@ -1,8 +1,6 @@
 // models/Participante.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
 
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
 const Clasificacion = sequelize.define('ClasificacionEstrategica', {
   idClasificacion: {
     type: DataTypes.INTEGER,
@@ -13,10 +11,16 @@ const Clasificacion = sequelize.define('ClasificacionEstrategica', {
     type: DataTypes.STRING(100),
     allowNull: false
   },
+  idsubcategoria: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  }
 }, {
   tableName: 'clasificacionEstrategica',
   timestamps: false // O configúralo si tienes columnas createdAt/updatedAt
 });
+  Clasificacion.associate = function(models){
 
+  }
 return Clasificacion;
 };

@@ -1,29 +1,29 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineDaf = (sequelize)=>{
-    const daf=sequelize.define('Daf',{
+export default (sequelize,DataTypes)=>{
+    const Daf=sequelize.define('Daf',{
        idDaf: { 
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
     },
-    idusuario: { // Clave foránea que referencia a la tabla 'usuarios'
+    idusuario: { 
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true // Un usuario solo puede ser un tipo de administrador
+      unique: true 
     },
     nivelAcceso: {
       type: DataTypes.INTEGER,
       defaultValue: 6
     },
-    // Otros campos específicos de Administrador
   }, {
     tableName: 'daf',
-    timestamps: false // Opcional: si no quieres timestamps en esta tabla
+    timestamps: false 
   });
+  Daf.associate = function(models){
+    Daf.belongsTo(models.User,{foreignKey:'idusuario'});
 
-  return daf;
+
+  }
+
+  return Daf;
 };
 
-export default defineDaf;

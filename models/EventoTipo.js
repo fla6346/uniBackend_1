@@ -1,11 +1,8 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-export default (sequelize) => {
+export default (sequelize,DataTypes) => {
 const EventoTipo=sequelize.define('EventoTipo',{
    idevento:{
         type: DataTypes.INTEGER,
         allowNull: false,
-        autoIncrement: false,
         field: 'idevento',
         primaryKey: true,
     },
@@ -13,7 +10,6 @@ const EventoTipo=sequelize.define('EventoTipo',{
         type: DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
-        autoIncrement: false,
         references:{
             model:'tipo_evento',
             key:'idtipoevento',
@@ -28,7 +24,11 @@ const EventoTipo=sequelize.define('EventoTipo',{
 },{
     tableName:'evento_tipos',
     timestamps:false,
+    primaryKey:['idevento','idtipoevento'],
 
-});
+}
+);
+
+
   return EventoTipo; 
 };

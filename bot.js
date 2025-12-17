@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { linkTelegramAccount } from './controllers/userController.js'; 
-import { getAllEventos, getEventoById , fetchAllEvents,fetchEventById, fetchEventsWithRawQuery} from './controllers/eventController.js';
+import { getAllEventos, getEventoById , fetchAllEvents,fetchEventById, fetchEventsWithRawQuery} from './controllers/evento.js';
 export const startTelegramBot=()=>{
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN; 
 const API_BASE_URL = process.env.API_BASE_URL; 

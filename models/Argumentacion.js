@@ -1,23 +1,25 @@
 // models/Objetivo.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
 
-
-export default (sequelize) => {
+export default (sequelize, DataTypes) => {
   const Argumentacion = sequelize.define('Argumentacion', {
     idargumentacion: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    idobjetivo: {
+   idobjetivo: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'idobjetivo',
+       references: {
+        model: 'objetivo',
+        key: 'idobjetivo'
+      }
     },
     texto_argumentacion: {
       type: DataTypes.STRING,
       allowNull: true,
-      field: 'texto_personalizado',
+      field: 'texto_argumentacion',
     },
    
   }, {

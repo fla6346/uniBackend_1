@@ -1,11 +1,13 @@
 // backend/controllers/userController.js
-import { User,Role, Academico, Facultad } from '../config/db.js'; // Asegúrate que esta importación traiga tu modelo User
-import { Op } from 'sequelize';
+import {getModels} from '../models/index.js ';
+import { Op, where } from 'sequelize';
 import bcrypt from 'bcryptjs'; // Para hashear contraseñas
 import asyncHandler from 'express-async-handler'; // Para manejo de errores async
 
 
 export const createUser = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const {User} = models;
   const {
     username,
     nombre,
@@ -15,8 +17,10 @@ export const createUser = asyncHandler(async (req, res) => {
     contrasenia, 
     role,
     habilitado,
-     idusuarioexterno,
-     idestudiante,   
+     idfacultad,     
+    idcarrera,      
+    idusuarioexterno,
+    idestudiante,  
   } = req.body;
 
   // 1. Validar datos de entrada
@@ -75,24 +79,134 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {
-  
+  const models = await getModels();
+  const {User,Academico, Carrera} = models;
   const users = await User.findAll({
-    attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
-    //order: [['createdAt', 'DESC']],
-  });
+     include: [
+    {
+      model: Academico,
+      as: 'academico',
+      include: [{
+        model: Carrera,
+        as: 'carrera',
+        attributes: ['nombreCarrera'] // Solo el nombre de la carrera
+      }],
+       attributes: []
+  }
+  ],
+  attributes: { exclude: ['contrasenia'] } // Excluye la contraseña por seguridad
+});
   res.status(200).json(users);
 });
 
 export const getCarrera= asyncHandler(async (req,res)=>{
   try {
-    const carreras = await carreras.findAll(); // Suponiendo que usas un ORM como Sequelize
+      const models = await getModels();
+      const {Carrera} = models;
+    const carreras = await Carrera.findAll(); // Suponiendo que usas un ORM como Sequelize
     res.status(200).json(carreras);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener carreras', error });
   }
 });
+export const getUserProfile = asyncHandler(async (req, res) => {
+
+  try {
+    const userId = req.user.id; // ID del usuario autenticado desde el middleware
+    
+    // Query con JOIN para obtener el nombre de la facultad
+    const query = `
+      SELECT 
+        u.id, 
+        u.nombre, 
+        u.apellidopat, 
+        u.apellidomat, 
+        u.email,
+        u.role,
+        u.facultad_id,
+        f.nombre_facultad as facultad
+      FROM usuarios u
+      LEFT JOIN facultad f ON u.facultad_id = f.id
+      WHERE u.id = ?
+    `;
+    
+    // Ajusta según tu configuración de base de datos
+    const [rows] = await pool.query(query, [userId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    
+    const user = rows[0];
+    
+    res.json({
+      id: user.id,
+      nombre: user.nombre,
+      apellidopat: user.apellidopat,
+      apellidomat: user.apellidomat,
+      email: user.email,
+      role: user.role,
+      facultad: user.facultad || 'Sin facultad',
+      facultad_id: user.facultad_id
+    });
+    
+  } catch (error) {
+    console.error('Error al obtener perfil:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener el perfil del usuario',
+      error: error.message 
+    });
+  }
+});
 export const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findByPk(req.params.idusuario, {
+   const models = await getModels();
+  const {User} = models;
+  try {
+    const { id } = req.params; // ✅ Obtiene el ID de la URL
+    
+    console.log('Backend: Consultando usuario con ID:', id);
+
+    if (!id) {
+      return res.status(400).json({ message: 'ID de usuario requerido' });
+    }
+
+    const user = await User.findByPk(id, {
+      attributes: { exclude: ['contrasenia'] } // No enviar la contraseña
+    });
+
+    if (!user) {
+      console.log('Backend: Usuario no encontrado con ID:', id);
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    console.log('Backend: Usuario encontrado:', user.toJSON());
+
+    // ✅ Enviar respuesta en el formato que espera el frontend
+    res.status(200).json({
+      user: {
+        idusuario: user.idusuario,
+        username: user.username,
+        nombre: user.nombre,
+        apellidopat: user.apellidopat,
+        apellidomat: user.apellidomat,
+        email: user.email,
+        role: user.role,
+        habilitado: user.habilitado
+      }
+    });
+  } catch (error) {
+    console.error('Error en getUserById:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener usuario',
+      error: error.message 
+    });
+  }
+});
+
+  export const getUserById1 = asyncHandler(async (req, res) => {
+     const models = await getModels();
+  const {User} = models;
+  const user = await User.findByPk(req.params.id, {
     attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
   });
 
@@ -104,71 +218,147 @@ export const getUserById = asyncHandler(async (req, res) => {
 });
 
 export const updateUserRole = asyncHandler(async (req, res) => {
-  // Tu código existente para updateUserRole
-  const { id } = req.params;
-  const { role } = req.body; // Asumiendo que solo actualizas el rol por ahora
+  const userId = req.params.id;
+  const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
 
-  // Si quieres actualizar más campos, los tomarías de req.body
-  // const { nombre, apellidopat, apellidomat, email, habilitado, newPassword } = req.body;
+  console.log('Backend: Actualizando usuario ID:', userId);
+  console.log('Backend: Datos recibidos:', req.body);
 
+  try {
+    // Construir query dinámicamente
+    let query = 'UPDATE usuarios SET username = ?, nombre = ?, apellidopat = ?, apellidomat = ?, email = ?, role = ?, habilitado = ?';
+    let params = [username, nombre, apellidopat, apellidomat, email, role, habilitado];
 
-  const user = await User.findByPk(id);
-
-  if (!user) {
-    res.status(404);
-    throw new Error('Usuario no encontrado.');
-  }
-
-  // Actualizar campos (ejemplo)
-  // user.nombre = nombre || user.nombre;
-  // user.email = email || user.email;
-  // user.habilitado = habilitado !== undefined ? habilitado : user.habilitado;
-
-  if (role) {
-    const allowedRoles = ['student', 'organizer', 'admin']; // Añade 'user' si es un rol válido
-    if (!allowedRoles.includes(role)) {
-        res.status(400);
-        throw new Error(`Rol inválido. Roles permitidos: ${allowedRoles.join(', ')}.`);
+    // Si se proporciona contraseña, incluirla
+    if (contrasenia && contrasenia.trim() !== '') {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(contrasenia, 10);
+      query += ', contrasenia = ?';
+      params.push(hashedPassword);
     }
-    // Lógica para evitar quitar el rol de admin al único admin (ya la tenías)
-    if (user.idusuario === req.user.idusuario && user.role === 'admin' && role !== 'admin') {
-        const adminCount = await User.count({ where: { role: 'admin' } });
-        if (adminCount <= 1) {
-            res.status(400);
-            throw new Error('No puedes quitar el rol de administrador al único administrador.');
+
+    query += ' WHERE id = ?';
+    params.push(userId);
+
+    db.query(query, params, (error, results) => {
+      if (error) {
+        console.error('Error al actualizar usuario:', error);
+        
+        // Manejar error de duplicado (username o email ya existen)
+        if (error.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ 
+            message: 'El nombre de usuario o email ya están en uso' 
+          });
         }
-    }
-    user.role = role;
+        
+        return res.status(500).json({ 
+          message: 'Error al actualizar el usuario',
+          error: error.message 
+        });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ 
+          message: 'Usuario no encontrado' 
+        });
+      }
+
+      console.log('Backend: Usuario actualizado exitosamente');
+      res.status(200).json({ 
+        message: 'Usuario actualizado correctamente',
+        affectedRows: results.affectedRows
+      });
+    });
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ 
+      message: 'Error del servidor',
+      error: error.message 
+    });
   }
-  
+});
+export const updateUser = asyncHandler(async (req, res) => {
+   const models = await getModels();
+  const {User} = models;
+  try {
+    const { id } = req.params;
+    const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
 
-  // Si se envía una nueva contraseña, hashearla y actualizarla
-  // if (newPassword) {
-  //   if (newPassword.length < 6) {
-  //     res.status(400);
-  //     throw new Error('La nueva contraseña debe tener al menos 6 caracteres.');
-  //   }
-  //   const salt = await bcrypt.genSalt(10);
-  //   user.contrasenia = await bcrypt.hash(newPassword, salt);
-  // }
+    console.log('Backend: Actualizando usuario ID:', id);
+    console.log('Backend: Datos recibidos:', req.body);
 
-  const updatedUser = await user.save();
+    if (!id) {
+      return res.status(400).json({ message: 'ID de usuario requerido' });
+    }
 
-  const userResponse = {
-    idusuario: updatedUser.idusuario,
-    username: updatedUser.username,
-    nombre: updatedUser.nombre,
-    apellidopat: updatedUser.apellidopat,
-    apellidomat: updatedUser.apellidomat,
-    email: updatedUser.email,
-    role: updatedUser.role,
-    habilitado: updatedUser.habilitado,
-    updatedAt: updatedUser.updatedAt,
-  };
-  res.status(200).json(userResponse);
+    // Buscar el usuario
+    const user = await User.findByPk(id);
+
+    if (!user) {
+      console.log('Backend: Usuario no encontrado con ID:', id);
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Verificar si el username o email ya existen (y no son del mismo usuario)
+    if (username && username !== user.username) {
+      const existingUser = await User.findOne({ where: { username } });
+      if (existingUser) {
+        return res.status(409).json({ message: 'El nombre de usuario ya está en uso' });
+      }
+    }
+
+    if (email && email !== user.email) {
+      const existingEmail = await User.findOne({ where: { email } });
+      if (existingEmail) {
+        return res.status(409).json({ message: 'El email ya está en uso' });
+      }
+    }
+
+    // Actualizar campos
+    if (username) user.username = username;
+    if (nombre) user.nombre = nombre;
+    if (apellidopat) user.apellidopat = apellidopat;
+    if (apellidomat !== undefined) user.apellidomat = apellidomat;
+    if (email) user.email = email;
+    if (role) user.role = role;
+    if (habilitado !== undefined) user.habilitado = habilitado;
+
+    // Si se proporciona contraseña, hashearla
+    if (contrasenia && contrasenia.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      user.contrasenia = await bcrypt.hash(contrasenia, salt);
+    }
+
+    // Guardar cambios
+    await user.save();
+
+    console.log('Backend: Usuario actualizado exitosamente');
+
+    res.status(200).json({
+      message: 'Usuario actualizado correctamente',
+      user: {
+        idusuario: user.idusuario,
+        username: user.username,
+        nombre: user.nombre,
+        apellidopat: user.apellidopat,
+        apellidomat: user.apellidomat,
+        email: user.email,
+        role: user.role,
+        habilitado: user.habilitado
+      }
+    });
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ 
+      message: 'Error al actualizar el usuario',
+      error: error.message 
+    });
+  }
 });
 
 export const getDirectoresCarrera = asyncHandler(async(req, res) => {
+   const models = await getModels();
+  const {User,Role} = models;
   try{ 
   const directorRole = await Role.findOne({
       where: { nombrerol: 'Director de carrera' }
@@ -206,7 +396,8 @@ export const getDirectoresCarrera = asyncHandler(async(req, res) => {
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
 export const deleteUserByAdmin = asyncHandler(async (req, res) => {
-  // Tu código existente para deleteUserByAdmin
+   const models = await getModels();
+  const {User} = models;
   const { id } = req.params;
   const user = await User.findByPk(id);
 
@@ -223,53 +414,140 @@ export const deleteUserByAdmin = asyncHandler(async (req, res) => {
   await user.destroy();
   res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
 });
-export const getComite = asyncHandler(async(req, res) => {
-  try {
-    const users = await User.findAll({
-      where: {
-        role: ['admin', 'academico', 'DAF', 'TI'], // o los roles que apliquen
-        habilitado: '1'
-      },
-      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role'],
-      include:[{
-        model:Academico,
-        as: 'academico',
-        attributes:[],
-        include:[
-          {
-            model:Facultad,
-            as:'facultad',
-            attributes:['nombre_facultad']
-          }
-        ],
-        required: false
-      }
-    ],
-      order: [['rol', 'ASC']]
-    });
 
-    const formattedUsers = users.map(user => {
-       const facultad = user.academico?.facultad?.nombre || null;
-      return {
-        id: user.idusuario,
-        nombreCompleto: `${user.nombre} ${user.apellidopat} ${user.apellidomat}`.trim(),
-        email: user.email,
-        role: user.role,
-        facultad: user.academico?.facultad?.nomfacultad 
-      };
-    });
-    res.json(formattedUsers);
+export const getComite = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const { sequelize } = models;
+
+  try {
+    const [results] = await sequelize.query(`
+      SELECT 
+        u.idusuario,
+        u.nombre,
+        u.apellidopat,
+        u.apellidomat,
+        u.email,
+        u.role,
+        f.nombre_facultad AS facultad
+      FROM usuario u
+      LEFT JOIN academico a ON u.idusuario = a.idusuario
+      LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
+      WHERE u.role = 'academico' AND u.habilitado = '1'
+      ORDER BY u.nombre, u.apellidopat
+    `);
+
+    // ✅ Formatear directamente desde 'results'
+    const usuariosFormateados = results.map(row => ({
+      id: row.idusuario,
+      nombreCompleto: `${row.nombre || ''} ${row.apellidopat || ''} ${row.apellidomat || ''}`.trim(),
+      email: row.email,
+      role: row.role,
+      facultad: row.facultad || null  // <-- viene directo de la columna 'f.nombre_facultad AS facultad'
+    }));
+
+    res.status(200).json(usuariosFormateados);
   } catch (error) {
     console.error('Error al obtener usuarios para comité:', error);
-    res.status(500).json({ error: 'Error al cargar los usuarios' });
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+export const getComiteUser = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const { sequelize } = models;
+
+  try {
+    const [results] = await sequelize.query(`
+      SELECT 
+        u.idusuario,
+        u.nombre,
+        u.apellidopat,
+        u.apellidomat,
+        u.email,
+        u.role,
+        f.nombre_facultad AS facultad
+      FROM usuario u
+      LEFT JOIN academico a ON u.idusuario = a.idusuario
+      LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
+      WHERE u.role = 'academico' AND u.habilitado = '1'
+      ORDER BY u.nombre, u.apellidopat
+    `);
+
+    // ✅ Formatear directamente desde 'results'
+    const usuariosFormateados = results.map(row => ({
+      id: row.idusuario,
+      nombreCompleto: `${row.nombre || ''} ${row.apellidopat || ''} ${row.apellidomat || ''}`.trim(),
+      email: row.email,
+      role: row.role,
+      facultad: row.facultad || null  // <-- viene directo de la columna 'f.nombre_facultad AS facultad'
+    }));
+
+    res.status(200).json(usuariosFormateados);
+  } catch (error) {
+    console.error('Error al obtener usuarios para comité:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+export const getId = asyncHandler(async(req, res)=>{
+  try {
+    const { id } = req.params;
+
+    // Asegúrate de que el ID sea un entero
+    const userId = parseInt(id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+
+    const query = `
+      SELECT 
+        u.idusuario, 
+        u.username, 
+        u.email, 
+        u.role, 
+        u.habilitado,
+        a.idarea AS area_id,
+        c.idcarrera AS carrera_id,
+        c.nombrecarrera
+      FROM usuario u
+      LEFT JOIN academico a ON u.idusuario = a.idusuario
+      LEFT JOIN carrera c ON a.idcarrera = c.idcarrera
+      WHERE u.idusuario = ?
+    `;
+
+    const [rows] = await db.query(query, [userId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const user = rows[0];
+
+    // Formatear el objeto para incluir datos anidados si es académico
+    const response = {
+      idusuario: user.idusuario,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      habilitado: user.habilitado,
+    };
+
+    if (user.role === 'academico') {
+      response.academico = {
+        idarea: user.area_id,
+        carrera: user.carrera_id
+          ? { idcarrera: user.carrera_id, nombrecarrera: user.nombrecarrera }
+          : null,
+      };
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error al obtener usuario:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 export const linkTelegramAccount = asyncHandler(async (req, res) => {
-   console.log('============================================');
-  console.log('[API] Petición de vinculación de Telegram RECIBIDA.');
-  console.log('[API] Body de la petición:', req.body);
-  console.log('============================================');
+   const models = await getModels();
+  const {User} = models;
   
   const { email, chat_id } = req.body;
 
@@ -279,24 +557,23 @@ export const linkTelegramAccount = asyncHandler(async (req, res) => {
     throw new Error('Faltan el email o el chat_id.');
   }
 
-  // 2. Buscar al usuario por su email usando el modelo de Sequelize
   const user = await User.findOne({ where: { email } });
 
-  // Si no se encuentra el usuario
+  const token = jwt.sign(
+    { id: user.id }, // ✅ Usa "id", no "idusuario"
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
   if (!user) {
     res.status(404);
     throw new Error('No se encontró ningún usuario con ese email. Por favor, verifica que lo hayas escrito correctamente.');
   }
 
-  // 3. Verificar si la cuenta de email o de Telegram ya están vinculadas
-  // (Asumiendo que tu modelo tiene un campo 'telegram_chat_id')
   if (user.telegram_chat_id) {
     if (user.telegram_chat_id == chat_id) {
-      // Ya estaba vinculado a esta misma cuenta, todo bien.
       return res.status(200).json({ message: 'Esta cuenta ya estaba vinculada correctamente.' });
     } else {
-      // El email ya está vinculado a OTRO chat de Telegram.
-      res.status(409); // 409 Conflict
+      res.status(409); 
       throw new Error('Este email ya está vinculado a otra cuenta de Telegram.');
     }
   }
@@ -310,3 +587,108 @@ export const linkTelegramAccount = asyncHandler(async (req, res) => {
     message: `¡Éxito! Tu cuenta (${user.email}) ha sido vinculada. Ahora recibirás notificaciones.`
   });
 });
+
+export const getProfile = asyncHandler(async (req, res) => {
+  
+    if (!req.user.idusuario) {
+    return res.status(401).json({ message: 'No autorizado: usuario no autenticado' });
+  }
+
+  const userId = req.user.idusuario;
+  if (!userId) {
+    console.error('req.user no tiene idusuario:', req.user);
+    return res.status(500).json({ message: 'Error: usuario autenticado sin ID válido' });
+  }
+
+  const models = await getModels();
+  const { User, Facultad } = models; // o 'User', según el nombre real de tu modelo
+
+  try {
+    const user = await User.findByPk(userId,{
+      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role', 'facultad_id'],
+      include: [
+        {
+          model: Facultad,
+          as: 'facultad', // debe coincidir con el alias de la asociación
+          attributes: ['nombre_facultad']
+        }
+      ]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json({
+      id: user.idusuario,
+      nombre: user.nombre,
+      apellidopat: user.apellidopat,
+      apellidomat: user.apellidomat,
+      email: user.email,
+      role: user.role,
+      facultad: user.facultad?.nombre_facultad || 'Sin facultad',
+      facultad_id: user.facultad_id
+    });
+
+  } catch (error) {
+    console.error('Error al obtener perfil:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener el perfil del usuario',
+      error: error.message 
+    });
+  }
+  /*const idusuario = req.user.idusuario;
+  const models = await getModels();
+  const { sequelize,Usuario } = models;
+  try {
+    const [results] = await sequelize.query(`
+      SELECT 
+        u.idusuario,
+        u.nombre,
+        u.apellidopat,
+        u.apellidomat,
+        u.email,
+        u.role,
+        f.nombre_facultad AS facultad
+      FROM usuario u
+      LEFT JOIN academico a ON u.idusuario = a.idusuario
+      LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
+      WHERE u.idusuario = ?
+    `, {
+      replacements: [idusuario],
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const user = results[0];
+
+    res.status(200).json({
+      idusuario: user.idusuario,
+      nombre: user.nombre,
+      apellidopat: user.apellidopat,
+      apellidomat: user.apellidomat,
+      email: user.email,
+      role: user.role,
+      facultad: user.facultad || null // Puede ser null si no es académico o no tiene facultad asignada
+    });
+  } catch (error) {
+    console.error('Error en getProfile:', error);
+    res.status(500).json({ message: 'Error al obtener el perfil del usuario' });
+  }*/
+});
+export const getFacultades = asyncHandler(async(req,res)=>{
+try{
+  const models = await getModels();
+  const {Facultad} = models;
+  const facultad = await Facultad.findAll();
+  res.status(200).json(facultad);
+
+}catch(error){
+  res.status(500).json({message: 'Error al obtener', error})
+
+}
+
+})

@@ -1,8 +1,4 @@
-// D:\Nueva carpeta\backend\models\Category.js
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../config/db.js';
-
-export default (sequelize) => {
+export default (sequelize, DataTypes) => {
 const Category = sequelize.define('Category', {
   id: {
     type: DataTypes.UUID,

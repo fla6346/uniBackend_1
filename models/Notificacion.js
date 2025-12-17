@@ -1,33 +1,24 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
 
-const defineNotificacion = (sequelize) => {
-    const notificacion = sequelize.define('Notificacion', {
+export default (sequelize,DataTypes) => {
+    const Notificacion = sequelize.define('Notificacion', {
   idnotificacion: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
-  idadministrador: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  idestudiante: {
-    type: DataTypes.INTEGER,
-    allowNull: true
-  },
-  idevento: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    References:{model:'Evento',
-      key:'idEvento'
-    }
-  },
+ idusuario: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'usuario',
+        key: 'idusuario'
+      }
+    },
   mensaje: {
     type: DataTypes.TEXT,
     allowNull: false
   },
-  tipo: {
+  tipo:{
     type: DataTypes.STRING(50),
     allowNull: false
   },
@@ -39,10 +30,7 @@ const defineNotificacion = (sequelize) => {
     type: DataTypes.STRING(255),
     allowNull: false
   },
-  event_data: {
-    type: DataTypes.JSON,
-    allowNull: true
-  },
+ 
   created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
@@ -55,6 +43,12 @@ const defineNotificacion = (sequelize) => {
   tableName: 'notificacion',
   timestamps: false,
 });
-return notificacion;
+Notificacion.associate = function(models) {
+    Notificacion.belongsTo(models.User, {
+      foreignKey: 'idusuario',
+      as: 'usuario'
+    });
+  };
+
+return Notificacion;
 };
-export default defineNotificacion;

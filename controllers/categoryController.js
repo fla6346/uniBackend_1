@@ -1,12 +1,7 @@
-// D:\Nueva carpeta\backend\controllers\categoryController.js
- import {Category} from '../config/db.js'; // Asumiendo que usas models/index.js
-//import { Category } from '../models/Category.js'; // Si usas models/index.js para exportar todo
-// @desc    Obtener todas las categorías
-// @route   GET /api/categories
-// @access  Public
+ import {getModels} from '../models/index.js';
 export const getAllCategories = async (req, res) => { // <--- EXPORT NOMBRADO
   try {
-    const categories = await Category.findAll();
+    const categories = await getModels.Category.findAll();
     res.status(200).json(categories);
   } catch (error) {
     console.error(error);
@@ -23,7 +18,7 @@ export const createCategory = async (req, res) => { // <--- EXPORT NOMBRADO
     if (!name) {
       return res.status(400).json({ message: 'El nombre de la categoría es obligatorio' });
     }
-    const newCategory = await Category.create({ name, description });
+    const newCategory = await getModels.Category.create({ name, description });
     res.status(201).json(newCategory);
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -45,7 +40,7 @@ export const updateCategory = async (req, res) => { // <--- EXPORT NOMBRADO
   const { id } = req.params;
   const { name, description } = req.body;
   try {
-    const category = await Category.findByPk(id);
+    const category = await getModels.Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: 'Categoría no encontrada' });
     }
@@ -74,7 +69,7 @@ export const updateCategory = async (req, res) => { // <--- EXPORT NOMBRADO
 export const deleteCategory = async (req, res) => { // <--- EXPORT NOMBRADO
   const { id } = req.params;
   try {
-    const category = await Category.findByPk(id);
+    const category = await getModels.Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: 'Categoría no encontrada' });
     }

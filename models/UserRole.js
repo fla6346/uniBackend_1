@@ -1,9 +1,4 @@
-import { DataTypes } from 'sequelize';
-import sequelize from '../config/db.js';
-import User from './User.js';
-import Role from './Role.js';
-
-export default(sequelize)=>{
+export default(sequelize, DataTypes)=>{
 const UserRole = sequelize.define('UserRole', {
     idrol: {
     type: DataTypes.INTEGER,
@@ -27,5 +22,5 @@ const UserRole = sequelize.define('UserRole', {
   tableName: 'usuario_rol',
   timestamps: false,
 });
-}
 return UserRole;
+};

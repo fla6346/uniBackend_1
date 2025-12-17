@@ -1,7 +1,4 @@
-import { DataTypes } from "sequelize";
-import { sequelize } from "../config/db.js";
-
-const defineExterno = (sequelize)=>{
+export default (sequelize,DataTypes)=>{
     const externo=sequelize.define('Externo',{
        idExterno: { // Clave primaria para esta tabla específica
       type: DataTypes.INTEGER,
@@ -26,4 +23,3 @@ const defineExterno = (sequelize)=>{
   return externo;
 };
 
-export default defineExterno;
