@@ -87,7 +87,7 @@ export default (sequelize, DataTypes) => {
     },
   }, {
     tableName: 'evento',
-    timestamps: true
+    timestamps: false
   });
 
   Evento.associate = function(models) {

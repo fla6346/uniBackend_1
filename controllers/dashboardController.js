@@ -9,9 +9,8 @@ import asyncHandler from 'express-async-handler';
 export const getDashboardStats = asyncHandler(async (req, res) => {
   try {
     const models = await getModels();
-    const { User, Evento } = models;
+    const { User, Evento,Academico } = models;
 
-    console.log('📊 Calculando estadísticas del dashboard...');
 
     // 1. Usuarios Activos
     const activeUsers = await User.count({
@@ -51,7 +50,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     // 7. Estabilidad del sistema (puedes mejorar esto)
     const systemStability = 99;
-
+    const miEvento = await Evento.findAll({
+      attributes: ['idevento','nombreevento', 'estado', 'idacademico']
+    });
     const stats = {
       activeUsers,
       totalEvents,
