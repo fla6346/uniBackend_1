@@ -479,7 +479,8 @@ export const aprobarEvento = async (req, res) => {
       return res.status(404).json({ error: 'Evento no encontrado' });
     }
 
-    await evento.update({ estado: 'aprobado' });
+    await evento.update({ 
+      estado: 'aprobado', fecha_aprobacion: new Date()});
 
     // Opcional: crear notificación para el creador
     // (puedes integrar notificationController aquí si lo deseas)
