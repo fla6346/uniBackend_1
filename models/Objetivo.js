@@ -41,8 +41,7 @@ Objetivo.associate = function(models) {
   otherKey:'idevento' ,
   as: 'Eventos'});
 
-  Objetivo.hasMany(models.ObjetivoPDI, {
-     foreignKey: 'idobjetivo', as: 'ObjetivoPDIs' });
+  
   
   Objetivo.belongsTo(models.TipoObjetivo, {
     foreignKey:'idtipoobjetivo',as:'TipoObjetivo'});

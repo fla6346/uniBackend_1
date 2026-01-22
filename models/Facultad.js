@@ -27,9 +27,10 @@ export default (sequelize, DataTypes) => {
 
   Facultad.associate = function(models) {
     Facultad.hasMany(models.Academico, {
-      foreignKey: 'idfacultad',
+      foreignKey: 'facultad_id',
       as: 'academicos'
     });
+    
   };
 
   return Facultad;

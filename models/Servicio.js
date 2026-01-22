@@ -7,6 +7,15 @@ const Servicio=sequelize.define('Servicio',{
         allowNull: false,
         autoIncrement: true,
     },
+    idevento:{
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references:{
+            model:'evento',
+            key:'idevento',
+        },
+      
+    },
     nombreservicio:{
         type: DataTypes.STRING(20),
         allowNull: false,
@@ -28,7 +37,6 @@ const Servicio=sequelize.define('Servicio',{
     observaciones:{
         type: DataTypes.STRING(20),
         allowNull: false,
-        unique: true,
         field: 'observaciones',
     },
     habilitado:{
@@ -40,6 +48,13 @@ const Servicio=sequelize.define('Servicio',{
     
 },{
     tableName:'servicio',
+    timestamps:false,
 });
+Servicio.associate = function(models){
+    Servicio.belongsTo(models.Evento,{
+        foreignKey:'idevento',
+        as:'evento',
+    });
+}
  return Servicio;
 };

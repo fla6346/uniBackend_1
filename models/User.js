@@ -130,15 +130,13 @@ export default (sequelize,DataTypes) => {
        User.hasOne(models.Ti,{foreignKey:'idusuario', as: 'ti'});
     
        User.hasOne(models.Recursos,{foreignKey:'idusuario', as: 'recursos'});
-       User.belongsToMany(models.Comite, {through:'usuario_comite', foreignKey: 'idusuario',  otherKey: 'idcomite', as: 'comites'});
-       /* User.hasOne(models.ServiciosEstudiantiles,{foreignKey:'idusuario', as: 'serviciosEstudiantiles '});*/
        User.hasMany(models.Evento, { as: 'eventosCreados', foreignKey: 'idacademico' });
   User.belongsToMany(models.Evento, {
-    through: models.Comite,
-    as: 'eventosEnComite',
-    foreignKey: 'idusuario',
-    otherKey: 'idevento'
-  });
+  through: models.Comite,
+  foreignKey: 'idusuario',
+  otherKey: 'idevento',
+  as: 'eventosEnComite'
+});
   User.belongsTo(models.Facultad,{foreignKey:'facultad_id', as: 'facultad'})
       if (models.Notificacion && typeof models.Notificacion.hasMany === 'function') {
     User.hasMany(models.Notificacion, {

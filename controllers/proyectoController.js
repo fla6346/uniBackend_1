@@ -69,84 +69,50 @@ try {
       const objetivo = await Objetivo.create({
         idtipoobjetivo: objetivoData.id,
         idargumentacion: null,
-        texto_personalizado: objetivoData.texto_personalizado || null,
+        idobjetivopdi: null,
       }, { transaction: t });
 
-      // Vincular al evento
+       const idObjCreado = objetivo.idobjetivo || objetivo.id;
+    if (!idObjCreado) {
+      throw new Error(`No se pudo obtener el ID del objetivo creado con idtipoobjetivo=${objetivoData.id}`);
+    }
+     const textoPersonalizado = objetivoData.texto_personalizado?.trim() || null;
+
       await sequelize.query(
         'INSERT INTO evento_objetivos (idevento, idobjetivo, texto_personalizado) VALUES (?, ?, ?)',
         {
-          replacements: [nuevoEventoId, objetivo.idobjetivo, objetivoData.texto_personalizado || null],
+          replacements: [nuevoEventoId, idObjCreado, textoPersonalizado],
           transaction: t
         }
       );
 
-      if (data.argumentacion?.trim()) {
+      if (data.argumentacion?.trim() && todosLosObjetivos.length > 0) {
         const argumentacion = await models.Argumentacion.create({
-          idobjetivo: objetivo.idobjetivo,
+          idobjetivo: todosLosObjetivos[0].idobjetivo, // Asignar al primer objetivo
           texto_argumentacion: data.argumentacion.trim()
         }, { transaction: t });
- await objetivo.update({ idargumentacion: argumentacion.idargumentacion }, { transaction: t });
-      }
 
-      if (objetivoData.descripcion_pdi?.trim()) {
-        const objetivoPDIRecord = await models.ObjetivoPDI.create({
-          idobjetivo: objetivo.idobjetivo,
-          descripcion: objetivoData.descripcion_pdi.trim()
+        await todosLosObjetivos[0].update({
+          idargumentacion: argumentacion.idargumentacion
         }, { transaction: t });
-
       }
+
+     
 
       todosLosObjetivos.push(objetivo);
     }
   }
+if (data.argumentacion?.trim() && todosLosObjetivos.length > 0) {
+  const argumentacion = await models.Argumentacion.create({
+    idobjetivo: todosLosObjetivos[0].idobjetivo, // Asociar al primer objetivo
+    texto_argumentacion: data.argumentacion.trim()
+  }, { transaction: t });
+  
+  await todosLosObjetivos[0].update({ 
+    idargumentacion: argumentacion.idargumentacion 
+  }, { transaction: t });
+}
 
-  // ✅ 3. Procesar objetivos PDI globales (independientes)
-  if (data.objetivos_pdi) {
-    let objetivosPDIArray = [];
-    try {
-      objetivosPDIArray = typeof data.objetivos_pdi === 'string'
-        ? JSON.parse(data.objetivos_pdi)
-        : data.objetivos_pdi;
-    } catch (e) {
-      console.warn('Error al parsear objetivos_pdi');
-    }
-
-    const descripcionesValidas = (objetivosPDIArray || [])
-      .filter(desc => desc && desc.trim())
-      .map(desc => desc.trim());
-
-    if (descripcionesValidas.length > 0) {
-      const objetivoPDI = await Objetivo.create({
-        idtipoobjetivo: OTRO_TIPO_ID,
-        texto_personalizado: `PDI - ${descripcionesValidas.length} objetivos`,
-      }, { transaction: t });
-
-      await sequelize.query(
-        'INSERT INTO evento_objetivos (idevento, idobjetivo) VALUES (?, ?)',
-        { replacements: [nuevoEventoId, objetivoPDI.idobjetivo], transaction: t }
-      );
-
-      await ObjetivoPDI.bulkCreate(
-        descripcionesValidas.map(desc => ({
-          idobjetivo: objetivoPDI.idobjetivo,
-          descripcion: desc
-        })),
-        { transaction: t }
-      );
-
-      // Opcional: argumentación para este objetivo PDI agrupado
-      if (data.argumentacion?.trim()) {
-        const arg = await models.Argumentacion.create({
-          idobjetivo: objetivoPDI.idobjetivo,
-          texto_argumentacion: data.argumentacion.trim()
-        }, { transaction: t });
-        await objetivoPDI.update({ idargumentacion: arg.idargumentacion }, { transaction: t });
-      }
-
-      todosLosObjetivos.push(objetivoPDI);
-    }
-  }
 
   // ✅ 4. Procesar segmentos (vinculados a todos los objetivos creados)
   if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0 && todosLosObjetivos.length > 0) {
@@ -173,16 +139,26 @@ try {
     }
   }
 
+// ✅ Guardar los 3 objetivos PDI independientes del evento
+if (!Array.isArray(data.pdi_objetivos) || data.pdi_objetivos.length !== 3) {
+  throw new Error('Se requieren exactamente 3 objetivos del PDI');
+}
 
-  // ✅ 5. Procesar clasificación (si es un array de nuevas clasificaciones)
-  if (Array.isArray(data.clasificacion) && data.clasificacion.length > 0) {
-    for (const clasificacionData of data.clasificacion) {
-      await ClasificacionEstrategica.create({
-        nombreClasificacion: clasificacionData.nombreClasificacion || null,
-        idSubcategoria: clasificacionData.idSubcategoria || null,
-      }, { transaction: t });
-    }
+for (let i = 0; i < 3; i++) {
+  const descripcion = data.pdi_objetivos[i]?.trim();
+  if (!descripcion) {
+    throw new Error(`El objetivo PDI ${i + 1} no puede estar vacío`);
   }
+
+  await sequelize.query(
+    'INSERT INTO evento_pdi (idevento, descripcion) VALUES (?, ?)',
+    {
+      replacements: [nuevoEventoId, descripcion],
+      transaction: t
+    }
+  );
+}
+  
 
   // ✅ 6. Guardar resultados esperados
   let parsedResultados = {};
@@ -322,26 +298,33 @@ export const fetchAllEvents = async () => {
     throw error;
   }
 };
+
 export const getEventoById = asyncHandler(async (req, res) => {
   const models = await getModels();
-  const { Evento, Comite, User, Resultado } = models;
-  
+  const { Evento,Fase,Resultado, User, Comite, Objetivo, ObjetivoPDI, Segmento, Recurso, Actividad, Servicio } = models;
+
   try {
     const { id } = req.params;
     const eventIdNum = parseInt(id, 10);
-    
+
     if (isNaN(eventIdNum)) {
       return res.status(400).json({ message: 'ID de evento inválido' });
     }
-    
-    const evento = await Evento.findByPk(eventIdNum, { 
+
+    // 1. Obtener el evento principal
+    const evento = await Evento.findByPk(eventIdNum, {
       include: [
-        { model: Resultado, as: 'Resultados' },
-        { model: User, as: 'academicoCreador', 
+        {
+          model: User,
+          as: 'academicoCreador',
           attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role'],
           required: false
         },
-        { model: Comite, as: 'Comites' }
+        {
+          model: Fase,
+          as: 'fase',
+          attributes: ['nrofase']
+        }
       ]
     });
 
@@ -349,93 +332,292 @@ export const getEventoById = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
 
-    let tiposDeEvento = [];
-    try {
-      const [tiposRaw] = await sequelize.query(
-        `SELECT et.idevento, et.idtipoevento, et.texto_personalizado, 
-                te.nombre_tipo
-         FROM evento_tipos et
-         LEFT JOIN tipo_evento te ON et.idtipoevento = te.idtipoevento
-         WHERE et.idevento = ?`,
-        { replacements: [eventIdNum] }
-      );
-      tiposDeEvento = tiposRaw;
-    } catch (tiposError) {}
+      const actividades = await Actividad.findAll({
+        where: { idevento: eventIdNum },
+        attributes: ['nombre', 'responsable', 'fecha_inicio', 'fecha_fin', 'tipo']
+      });
 
-    let miembrosComite = [];
-    try {
-      miembrosComite = await Comite.findAll({
+      const servicios = await Servicio.findAll({
         where: { idevento: eventIdNum },
-        include: [{
-          model: User,
-          as: 'miembroComite',
-          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role']
-        }]
+        attributes: ['nombreservicio', 'fechadeentrega', 'caracteristicas', 'observaciones']
       });
-    } catch (includeError) {
-      const comiteRecords = await Comite.findAll({
-        where: { idevento: eventIdNum },
-        attributes: ['idevento', 'idusuario', 'created_at']
-      });
-      
-      const usuariosIds = comiteRecords.map(c => c.idusuario);
-      
-      if (usuariosIds.length > 0) {
-        const usuarios = await User.findAll({
-          where: { idusuario: usuariosIds },
-          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role']
+
+    // Resto de tus consultas existentes (tipos de evento, resultados, etc.)
+    const [tiposDeEvento] = await sequelize.query(
+      `SELECT et.idevento,t."nombretipo", et."texto_personalizado"
+   FROM "evento_tipos" et
+   JOIN "tipos_de_evento" t ON et."idtipoevento" = t."idtipoevento"
+   WHERE et."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+
+    const [resultados] = await sequelize.query(
+      `SELECT "satisfaccion_esperada","otros_resultados","participacion_esperada", "satisfaccion_real" FROM "resultado"
+    WHERE idevento=?`,
+      { replacements: [eventIdNum] }
+    );
+
+    const [clasificacionData] = await sequelize.query(
+      `SELECT 
+      e."idevento",
+      c."nombreClasificacion",
+      s."nombresubcategoria",
+      c."idclasificacion",
+      s."idsubcategoria"
+    FROM "evento" e
+    LEFT JOIN "clasificacion_estrategica" c ON e."idclasificacion" = c."idclasificacion"
+    LEFT JOIN "subcategoria" s ON c."idclasificacion" = s."idclasificacion"
+    WHERE e."idevento" = ? LIMIT 1`,
+      { replacements: [eventIdNum] }
+    );
+    const clasificacion = clasificacionData[0] || null;
+
+    const [objetivosRaw] = await sequelize.query(
+      `SELECT 
+        eo."idevento",
+         o."idobjetivo", 
+         o."idtipoobjetivo", 
+         o."texto_personalizado",
+         t."nombre_objetivo",  
+         s."nombre_segmento", 
+         s."idsegmento",
+         os."texto_personalizado" AS segmento_texto,
+         a."texto_argumentacion" AS argumentacion
+       FROM "evento_objetivos" eo
+       JOIN "objetivos" o ON eo."idobjetivo" = o."idobjetivo"
+       LEFT JOIN "tipos_objetivo" t ON o."idtipoobjetivo" = t."idtipoobjetivo" 
+       LEFT JOIN "objetivo_segmento" os ON o."idobjetivo" = os."idobjetivo"
+       LEFT JOIN "segmento" s ON os."idsegmento" = s."idsegmento"
+       LEFT JOIN "argumentacion" a ON o."idobjetivo" = a."idobjetivo"
+       WHERE eo."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+
+    // Agrupar objetivos (tu lógica existente)
+    const objetivosMap = new Map();
+    objetivosRaw.forEach(row => {
+      if (!objetivosMap.has(row.idobjetivo)) {
+        objetivosMap.set(row.idobjetivo, {
+          idobjetivo: row.idobjetivo,
+          idtipoobjetivo: row.idtipoobjetivo,
+          texto_personalizado: row.texto_personalizado,
+          nombre_objetivo: row.nombre_objetivo, 
+          pdi_descripciones: [],
+          segmentos: [],
+          argumentacion: row.argumentacion || null  
         });
-        
-        miembrosComite = comiteRecords.map(comite => ({
-          ...comite.toJSON(),
-          miembroComite: usuarios.find(u => u.idusuario === comite.idusuario)?.toJSON()
-        }));
+      }
+      const obj = objetivosMap.get(row.idobjetivo);
+      if (row.idsegmento) obj.segmentos.push({
+        idsegmento: row.idsegmento,
+        nombre_segmento: row.nombre_segmento,
+        texto_personalizado: row.segmento_texto
+      });
+    });
+
+    const objetivos = Array.from(objetivosMap.values());
+    
+    const pdiRows = await sequelize.query(
+      `SELECT "descripcion" FROM evento_pdi WHERE idevento = :idevento ORDER BY idevento_pdi ASC`,
+      { 
+        replacements: { idevento: eventIdNum },
+        type: sequelize.QueryTypes.SELECT 
+      }
+    );
+    const pdiIndependientes = pdiRows.map(row => row.descripcion);
+
+    const [comiteRaw] = await sequelize.query(
+      `SELECT u."idusuario", u."nombre", u."apellidopat", u."apellidomat", 
+              u."email", u."role"
+       FROM "comite" c
+       JOIN "usuario" u ON c."idusuario" = u."idusuario"
+       WHERE c."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+    const comite = comiteRaw;
+
+    const [recursosRaw] = await sequelize.query(
+      `SELECT r."idrecurso", r."nombre_recurso", r."recurso_tipo", 
+              r."descripcion", r."habilitado"
+       FROM "evento_recurso" er
+       JOIN "recurso" r ON er."idrecurso" = r."idrecurso"
+       WHERE er."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+    const recursos = recursosRaw;
+
+    let presupuesto = null;
+    if (evento.datos_presupuesto) {
+      try {
+        presupuesto = JSON.parse(evento.datos_presupuesto);
+      } catch (e) {
+        presupuesto = null;
       }
     }
 
-    const eventoConComite = evento.toJSON();
-    eventoConComite.Comites = miembrosComite;
-    eventoConComite.tiposDeEvento = tiposDeEvento;
+    // ✅ Construir la respuesta completa con actividades y servicios
+    const eventoCompleto = {
+      ...evento.toJSON(),
+      // ✅ Actividades separadas por tipo
+      actividadesPrevias: actividades.filter(a => a.tipo === 'Previa'),
+      actividadesDurante: actividades.filter(a => a.tipo === 'Durante'),
+      actividadesPost: actividades.filter(a => a.tipo === 'Posterior'),
+      // ✅ Servicios contratados
+      serviciosContratados: servicios,
+      Resultados: resultados || [],
+      TiposDeEvento: tiposDeEvento,
+      Objetivos: objetivos,
+      Comite: comite,
+      Recursos: recursos,
+      Presupuesto: presupuesto,
+      ObjetivosPDI: pdiIndependientes,
+      Clasificacion: clasificacion,
+      fase: evento.fase ? [{
+        nrofase: evento.fase.nrofase
+      }] : []
+    };
 
-    res.status(200).json(eventoConComite);
+    res.status(200).json(eventoCompleto);
 
   } catch (error) {
-    res.status(500).json({ 
+    console.error('Error detallado en getEventoById:', error);
+    res.status(500).json({
       message: 'Error al obtener evento',
-      error: error.message 
+      error: error.message
     });
   }
 });
-
 export const updateEvento = asyncHandler(async (req, res) => {
-  const models = await getModels();
-  const Evento = models.Evento;
+  const t = await sequelize.transaction();
   try {
-    const evento = await Evento.findByPk(req.params.id);
+    const { id } = req.params;
+    const idevento = parseInt(id, 10);
 
-    if (!evento) {
+    if (isNaN(idevento) || idevento <= 0) {
+      await t.rollback();
+      return res.status(400).json({ message: 'ID de evento inválido' });
+    }
+
+    const [eventoExists] = await sequelize.query(
+      'SELECT 1 FROM evento WHERE idevento = ?',
+      { replacements: [idevento], transaction: t }
+    );
+    
+    if (eventoExists.length === 0) {
+      await t.rollback();
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
 
-    const allowedUpdates = [
-      'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
-      'idtipoevento', 'idservicio', 'idactividad', 'idambiente', 'idobjetivo'
-    ];
+  const TIPO_MAPEO = {
+  actividadesPrevias: 'Previa',
+  actividadesDurante: 'Durante',
+  actividadesPost: 'Posterior'
+};
+    const tiposActividad = ['actividadesPrevias', 'actividadesDurante', 'actividadesPost'];
+   
+for (const tipoFrontend of tiposActividad) {
+  const tipoDB = TIPO_MAPEO[tipoFrontend]; // ✅ Ej: 'actividadesPrevias' → 'previa'
 
-    allowedUpdates.forEach(field => {
-      if (req.body[field] !== undefined) {
-        if (field.startsWith('id') && field !== 'idobjetivo') {
-          evento[field] = req.body[field] ? parseInt(req.body[field]) : null;
-        } else {
-          evento[field] = req.body[field];
+  if (!tipoDB) {
+    console.warn(`Tipo no mapeado: ${tipoFrontend}`);
+    continue;
+  }
+
+  if (Array.isArray(req.body[tipoFrontend])) {
+    await sequelize.query(
+      'DELETE FROM actividades WHERE idevento = ? AND tipo = ?',
+      { replacements: [idevento, tipoDB], transaction: t }
+    );
+
+    // Insertar nuevas
+    for (const act of req.body[tipoFrontend]) {
+      await sequelize.query(
+        `INSERT INTO actividades (idevento, nombre, responsable, fecha_inicio, fecha_fin, lugar, tipo) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        {
+          replacements: [
+            idevento,
+            act.nombreActividad?.trim() || '',
+            act.responsable?.trim() || '',
+            act.fechaInicio || null,
+            act.fechaFin || null,
+            act.lugar?.trim() || '', // si existe
+            tipoDB // ✅ Valor exacto: 'Previa', 'Durante', 'Posterior'
+          ],
+          transaction: t
         }
+      );
+    }
+  }
+}
+    // 2. Servicios
+    if (Array.isArray(req.body.serviciosContratados)) {
+      await sequelize.query(
+        'DELETE FROM servicio WHERE idevento = ?',
+        { replacements: [idevento], transaction: t }
+      );
+      
+      for (const s of req.body.serviciosContratados) {
+        const fechaEntrega = s.fechaInicio instanceof Date 
+          ? s.fechaInicio.toISOString().split('T')[0]
+          : (typeof s.fechaInicio === 'string' ? s.fechaInicio.split('T')[0] : null);
+          
+        await sequelize.query(
+          `INSERT INTO servicio (idevento, nombreservicio, fechadeentrega, caracteristicas, observaciones) 
+           VALUES (?, ?, ?, ?, ?)`,
+          {
+            replacements: [
+              idevento,
+              s.nombreServicio?.trim() || '',
+              fechaEntrega,
+              s.caracteristica?.trim() || '',
+              s.observaciones?.trim() || ''
+            ],
+            transaction: t
+          }
+        );
       }
-    });
+    }
 
-    const eventoActualizado = await evento.save();
-    res.status(200).json(eventoActualizado);
+  if (req.body.nuevaFase?.nrofase) {
+  const nrofase = parseInt(req.body.nuevaFase.nrofase, 10);
+  if (!isNaN(nrofase)) {
+    const [faseExistente] = await sequelize.query(
+      'SELECT idfase FROM fase WHERE idevento = ? AND nrofase = ?',
+      { replacements: [idevento, nrofase], transaction: t }
+    );
+
+    if (faseExistente.length > 0) {
+      // ✅ Actualizar fase existente (si necesitas guardar más datos)
+      // await sequelize.query('UPDATE fase SET ...', { ... });
+    } else {
+      // ✅ Crear NUEVA fase para este evento
+      await sequelize.query(
+        'INSERT INTO fase (idevento, nrofase) VALUES (?, ?)',
+        { replacements: [idevento, nrofase], transaction: t }
+      );
+    }
+  }
+}
+
+    // ✅ NUEVO: Actualizar idlayout si viene en el body
+    if ('idlayout' in req.body) {
+      const idlayout = req.body.idlayout === null ? null : parseInt(req.body.idlayout, 10);
+      if (isNaN(idlayout) && req.body.idlayout !== null) {
+        console.warn('idlayout no es un número válido ni null:', req.body.idlayout);
+      }
+      await sequelize.query(
+        'UPDATE evento SET idlayout = ? WHERE idevento = ?',
+        { replacements: [idlayout, idevento], transaction: t }
+      );
+    }
+
+    await t.commit();
+    res.status(200).json({ message: 'Evento actualizado correctamente' });
 
   } catch (error) {
+    await t.rollback();
+    console.error('Error en updateEvento:', error);
     res.status(500).json({ 
       message: 'Error al actualizar evento',
       error: error.message 
@@ -524,134 +706,7 @@ export const getEventos = asyncHandler(async (req, res) => {
     });
   }
 });
-/*export const pendientes = asyncHandler(async(req,res) =>{
-  try{
-    const {area} = req.query;
-    const result = await sequelize.query('SELECT * FROM public.evento ORDER BY idevento ASC ')
-    res.json({evento: result.rows});
 
-  }catch(err){
-    console.error('Error al obtener los pendientes',err);
-    res.status(500).json({message:'Error interno'});
-  }
-});*/
-/*export const getEventosPendientesPorArea = asyncHandler(async (req, res) => {
-  const models = await getModels();
-  const { Evento, User, Comite } = models;
-  const { area } = req.query;
-  const userId = req.user.idusuario; // ← Usuario autenticado
-  const userRole = req.user.role;
-
-  try {
-    // Si es admin, puede ver todos los eventos pendientes (opcional)
-    if (userRole === 'admin') {
-      const eventos = await Evento.findAll({
-        where: { estado: 'pendiente' },
-        include: [{
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['nombre', 'apellidopat', 'apellidomat']
-        }],
-        order: [['createdAt', 'DESC']]
-      });
-
-      const eventosFormateados = eventos.map(event => {
-        const creador = event.academicoCreador;
-        return {
-          id: event.idevento,
-          title: event.nombreevento || 'Sin título',
-          description: event.descripcion || 'Sin descripción',
-          date: event.fechaevento 
-            ? new Date(event.fechaevento).toLocaleDateString('es-ES') 
-            : 'N/A',
-          time: event.horaevento || 'N/A',
-          location: event.lugarevento || 'Sin ubicación',
-          organizer: creador 
-            ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
-            : 'Sin organizador',
-          category: 'General',
-          priority: 'normal',
-          submittedBy: creador 
-            ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
-            : 'Sistema',
-          submittedDate: event.createdAt || event.fechaevento,
-        };
-      });
-
-      return res.status(200).json(eventosFormateados);
-    }
-
-    // Para usuarios NO admin (académicos, DAF, etc.)
-    // Buscar eventos donde:
-    // - El usuario es el creador, O
-    // - El usuario es miembro del comité
-    const eventos = await Evento.findAll({
-      where: { estado: 'pendiente' },
-      include: [
-        {
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['nombre', 'apellidopat', 'apellidomat']
-        },
-        {
-          model: Comite,
-          as: 'Comites',
-          where: { idusuario: userId },
-          attributes: [], // No necesitamos datos del comité, solo saber que existe
-          required: false // ← Clave: left join, no inner join
-        }
-      ],
-      // Filtrar: creador = userId OR comité existe
-      having: sequelize.where(
-        sequelize.fn('COALESCE', 
-          sequelize.col('academicoCreador.idusuario'), 
-          0
-        ), 
-        userId
-      ).or(
-        sequelize.fn('COUNT', sequelize.col('Comites.idevento')), 
-        { [Op.gt]: 0 }
-      ),
-      group: [
-        'Evento.idevento',
-        'academicoCreador.idusuario',
-        'academicoCreador.nombre',
-        'academicoCreador.apellidopat',
-        'academicoCreador.apellidomat'
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-
-    const eventosFormateados = eventos.map(event => {
-      const creador = event.academicoCreador;
-      return {
-        id: event.idevento,
-        title: event.nombreevento || 'Sin título',
-        description: event.descripcion || 'Sin descripción',
-        date: event.fechaevento 
-          ? new Date(event.fechaevento).toLocaleDateString('es-ES') 
-          : 'N/A',
-        time: event.horaevento || 'N/A',
-        location: event.lugarevento || 'Sin ubicación',
-        organizer: creador 
-          ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
-          : 'Sin organizador',
-        category: 'General',
-        priority: 'normal',
-        submittedBy: creador 
-          ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
-          : 'Sistema',
-        submittedDate: event.createdAt || event.fechaevento,
-      };
-    });
-
-    res.status(200).json(eventosFormateados);
-  } catch (error) {
-    console.error('Error en getEventosPendientesPorArea:', error);
-    res.status(500).json({ error: 'Error al cargar eventos pendientes' });
-  }
-});
-*/
 export const fetchEventById = async (id) => {
   const models = await getModels();
   const Evento = models.Evento;
@@ -677,10 +732,10 @@ export const fetchEventById = async (id) => {
   }
 };
 
-// controllers/evento.controller.js
+
 export const getEventosAprobados = asyncHandler(async (req, res) => {
   const models = await getModels();
-  const { Evento, User } = models;
+  const { Evento, User, Fase } = models;
   try {
     const userId = req.user.idusuario;
     const userRole = req.user.role;
@@ -689,6 +744,7 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
     if (userRole === 'admin' || userRole === 'daf') {
       eventos = await Evento.findAll({
         where: { estado: 'aprobado' },
+        attributes:{ include: ['idfase']},
         include: [
           {
             model: User,
@@ -699,34 +755,72 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
         order: [['createdAt', 'DESC']]
       });
     } else if (userRole === 'academico') {
+      // Paso 1: Eventos donde soy miembro del comité
+      const eventosEnComite = await sequelize.query(
+        'SELECT idevento FROM evento_comite WHERE idusuario = ?',
+        { replacements: [userId], type: sequelize.QueryTypes.SELECT }
+      );
+      const idsEventosComite = eventosEnComite.map(r => r.idevento);
+
+      // Paso 2: Facultad del usuario actual
+      const academicoActual = await models.Academico.findOne({
+        where: { idusuario: userId },
+        attributes: ['facultad_id']
+      });
+
+      let idsCreadores = [];
+
+      if (academicoActual?.facultad_id) {
+        // Paso 3: Todos los creadores de la misma facultad
+        const creadoresMismaFacultad = await models.Academico.findAll({
+          where: { facultad_id: academicoActual.facultad_id },
+          attributes: ['idusuario']
+        });
+        idsCreadores = creadoresMismaFacultad.map(a => a.idusuario);
+      }
+
+      // Paso 4: Combinar condiciones
+      const condiciones = [];
+      if (idsCreadores.length > 0) {
+        condiciones.push({ idacademico: { [Op.in]: idsCreadores } });
+      }
+      if (idsEventosComite.length > 0) {
+        condiciones.push({ idevento: { [Op.in]: idsEventosComite } });
+      }
+
+      if (condiciones.length === 0) {
+        return res.status(200).json([]);
+      }
+
       eventos = await Evento.findAll({
         where: {
           estado: 'aprobado',
-          [Op.or]: [
-            { idacademico: userId },
-            { '$comite.idusuario$': userId } // ← minúscula
-          ]
+          [Op.or]: condiciones
         },
         include: [
           {
             model: User,
             as: 'academicoCreador',
-            attributes: ['nombre', 'apellidopat', 'apellidomat']
-          },
-          {
-            model: User,
-            as: 'comite', // ← incluir la relación
-            attributes: [] // vacío para no devolver datos innecesarios
+            attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat']
           }
+        
         ],
         order: [['createdAt', 'DESC']]
       });
     } else {
       return res.status(403).json({ message: 'Acceso denegado' });
     }
+      const eventoIds = eventos.map(e => e.idevento);
+    const fases = await models.Fase.findAll({
+      where: { idfase: { [Op.in]: eventos.map(e => e.idfase).filter(id => id) } },
+      attributes: ['idfase', 'nrofase']
+    });
+
+    const faseMap = new Map(fases.map(f => [f.idfase, f.nrofase]));
 
     const eventosFormateados = eventos.map(event => {
       const creador = event.academicoCreador;
+      const eventoPlain = event.get({ plain: true });
       return {
         id: event.idevento,
         title: event.nombreevento || 'Sin título',
@@ -747,7 +841,7 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
         approvedAt: event.fecha_aprobacion 
           ? new Date(event.fecha_aprobacion).toLocaleString('es-ES') 
           : null,
-        approvedBy: event.admin_aprobador || null, // ← string directo
+        approvedBy: event.admin_aprobador || null,
         rejectionDate: event.fecha_rechazo 
           ? new Date(event.fecha_rechazo).toLocaleDateString('es-ES') 
           : null,
@@ -758,6 +852,9 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
         updatedAt: event.updatedAt 
           ? new Date(event.updatedAt).toLocaleString('es-ES') 
           : null,
+         //fase: eventoPlain.fase ? [eventoPlain.fase] : [],
+         idfase: event.idfase || null,
+        
       };
     });
 
@@ -767,66 +864,91 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
     return res.status(500).json({ error: 'Error al cargar eventos aprobados' });
   }
 });
+
 export const getEventosNoAprobados = async (req, res) => {
   const models = await getModels();
-  const { Evento, User } = models; // ← Solo necesitas User
+  const { Evento, User, Academico, Facultad } = models;
+
   try {
-    const userId = req.user.idusuario;        
-    const userRole = req.user.role;  
-    console.log('User Role:', userRole);  
+    const userId = req.user.idusuario;
+    const userRole = req.user.role;
+
     let eventos;
-    
-    if (userRole === 'admin') {
-      console.log('Usuario es admin, obteniendo todos los eventos pendientes');
+
+    if (userRole === 'admin' || userRole === 'daf') {
       eventos = await Evento.findAll({
         where: { estado: 'pendiente' },
-        include: [{
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['nombre', 'apellidopat', 'apellidomat']
-        },
-      {
-    model: User,
-    as: 'comite',
-    attributes: [],
-    required: false // ← ¡ESTO ES CLAVE!
-  }
-],
-        order: [['createdAt', 'DESC']]
-      });
-      console.log('Usuario es admin, obteniendo todos los eventos pendientes', eventos);
-    } else if (userRole === 'academico') {
-      console.log('Usuario es académico (ID:', userId, '), obteniendo eventos pendientes creados o asignados');
-
-      eventos = await Evento.findAll({
-        where: {
-          estado: 'pendiente',
-          [Op.or]: [
-            { idacademico: userId },
-            { '$comite.idusuario$': userId } // ✅ Alias en minúscula
-          ]
-        },
         include: [
           {
             model: User,
             as: 'academicoCreador',
-            attributes: ['nombre', 'apellidopat', 'apellidomat']
+            attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+       
           },
           {
             model: User,
-            as: 'comite', // ✅ Relación muchos a muchos con User
+            as: 'comite',
             attributes: [],
-            required:false
+            required: false
           }
         ],
         order: [['createdAt', 'DESC']]
       });
-    } else {
-      return res.status(403).json({ message: 'Acceso denegado' });
-    }
 
+    }  else if (userRole === 'academico') {
+  // Obtener la facultad del usuario actual
+  const academicoActual = await models.Academico.findOne({
+    where: { idusuario: userId },
+    attributes: ['facultad_id']
+  });
+
+  if (!academicoActual || !academicoActual.facultad_id) {
+    console.warn(`Usuario académico ${userId} no tiene facultad asignada.`);
+    return res.status(200).json([]);
+  }
+
+  const facultadId = academicoActual.facultad_id;
+
+  // Encontrar todos los usuarios que pertenecen a la misma facultad
+  const usuariosMismaFacultad = await models.Academico.findAll({
+    where: { facultad_id: facultadId },
+    attributes: ['idusuario']
+  });
+
+  const idsUsuarios = usuariosMismaFacultad.map(a => a.idusuario);
+
+  if (idsUsuarios.length === 0) {
+    return res.status(200).json([]);
+  }
+
+  // Obtener eventos pendientes creados por esos usuarios
+  eventos = await Evento.findAll({
+    where: {
+      estado: 'pendiente',
+      idacademico: { [Op.in]: idsUsuarios }
+    },
+    include: [
+      {
+        model: User,
+        as: 'academicoCreador',
+        attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat']
+      },
+      {
+        model: User,
+        as: 'comite',
+        attributes: [],
+        required: false
+      }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+} 
+
+    // Formatear respuesta
     const eventosFormateados = eventos.map(event => {
       const creador = event.academicoCreador;
+      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin área';
+
       return {
         id: event.idevento,
         title: event.nombreevento || 'Sin título',
@@ -845,11 +967,12 @@ export const getEventosNoAprobados = async (req, res) => {
         submittedDate: event.createdAt || event.fechaevento,
         approvedAt: event.fecha_aprobacion,
         approvedBy: event.admin_aprobador,
-        additionalComments: event.comentarios_admin, // ✅ Nombre correcto
+        additionalComments: event.comentarios_admin,
         rejectionDate: event.fecha_rechazo,
         rejectionReason: event.razon_rechazo,
         classificationId: event.idclasificacion,
-        resultId: event.idresultado
+        resultId: event.idresultado,
+        area: facultadNombre
       };
     });
 
@@ -860,45 +983,7 @@ export const getEventosNoAprobados = async (req, res) => {
     return res.status(500).json({ error: 'Error al cargar eventos pendientes' });
   }
 };
-/*export const fetchUserProfile = async (userId) => {
-  const models = await getModels();
-  const { User,Facultad } = models;
 
-  const user = await User.findByPk(userId, {
-    attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role','facultad_id'],
-    include: [
-      {
-        model: models.Academico,
-        as: 'academico',
-        attributes: [], // no necesitas atributos del académico, solo su facultad
-        include: [
-          {
-            model: models.Facultad,
-            as: 'facultad',
-            attributes: ['facultad_id', 'nombre_facultad'],
-            required:false
-          }
-        ]
-      }],
-  });
-
-  if (!user) {
-    throw new Error('Usuario no encontrado');
-  }
-
-  //const facultad = user.academico?.facultad || null;
-
-  return {
-    idusuario: user.idusuario,
-    nombre: user.nombre,
-    apellidopat: user.apellidopat,
-    apellidomat: user.apellidomat,
-    email: user.email,
-    role: user.role,
-    facultad: user.facultad || null
-  };
-};*/
-// NUEVA FUNCIÓN: Estadísticas del dashboard para administradores
 export const getDashboardStats = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Acceso denegado: solo administradores' });
@@ -972,5 +1057,74 @@ export const getHistoricalData = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error('Error en getHistoricalData:', error);
     res.status(500).json({ message: 'Error al cargar datos históricos' });
+  }
+});
+// Nueva función para obtener evento con todos los detalles
+export const getEventoCompletoById = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const { Evento, User, Recurso, ClasificacionEstrategica, Subcategoria } = models;
+
+  try {
+    const { id } = req.params;
+    const eventIdNum = parseInt(id, 10);
+
+    if (isNaN(eventIdNum)) {
+      return res.status(400).json({ message: 'ID de evento inválido' });
+    }
+
+    // 1. Obtener el evento principal con su creador
+    const evento = await Evento.findByPk(eventIdNum, {
+      include: [{
+        model: User,
+        as: 'academicoCreador',
+        attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role']
+      }]
+    });
+
+    if (!evento) {
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // 2. Obtener los recursos del evento
+    const [recursos] = await sequelize.query(
+      `SELECT r."idrecurso", r."nombre_recurso", r."recurso_tipo", 
+              r."descripcion", r."habilitado", r."cantidad"
+       FROM "evento_recurso" er
+       JOIN "recurso" r ON er."idrecurso" = r."idrecurso"
+       WHERE er."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+
+    // 3. Obtener la clasificación estratégica con su subcategoría
+    const [clasificacionData] = await sequelize.query(
+      `SELECT 
+         c."idclasificacion", 
+         c."nombreClasificacion",
+         s."idsubcategoria",
+         s."nombressubcategoria"
+       FROM "evento" e
+       LEFT JOIN "clasificacion_estrategica" c ON e."idclasificacion" = c."idclasificacion"
+       LEFT JOIN "subcategoria" s ON e."idsubcategoria" = s."idsubcategoria"
+       WHERE e."idevento" = ?`,
+      { replacements: [eventIdNum] }
+    );
+
+    const clasificacion = clasificacionData[0] || null;
+
+    // 4. Construir la respuesta completa
+    const eventoCompleto = {
+      ...evento.toJSON(),
+      Recursos: recursos,
+      Clasificacion: clasificacion
+    };
+
+    res.status(200).json(eventoCompleto);
+
+  } catch (error) {
+    console.error('Error al obtener evento completo:', error);
+    res.status(500).json({
+      message: 'Error al obtener evento',
+      error: error.message
+    });
   }
 });

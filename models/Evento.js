@@ -85,6 +85,7 @@ export default (sequelize, DataTypes) => {
       field: 'idresultado', 
       references: { model: 'resultado', key: 'idresultado' }
     },
+   
   }, {
     tableName: 'evento',
     timestamps: false
@@ -95,19 +96,16 @@ export default (sequelize, DataTypes) => {
       foreignKey: 'idclasificacion',
       as: 'clasificacion'
     });
-   /* Evento.belongsTo(models.User, {
-      foreignKey: 'idadministrador',
-      as: 'administradorAprobador'
-    });*/
+  
     Evento.belongsTo(models.User, {
       foreignKey: 'idacademico',
       as: 'academicoCreador'
     });
      Evento.belongsToMany(models.User, {
     through: models.Comite,
-    as: 'comite',
     foreignKey: 'idevento',
-    otherKey: 'idusuario'
+    otherKey: 'idusuario',
+    as: 'comite',
   });
     Evento.belongsToMany(models.Recurso, {
       through: 'evento_recurso',
@@ -134,16 +132,19 @@ export default (sequelize, DataTypes) => {
       otherKey: 'idestudiante',
       as: 'Estudiantes'
     });
-     Evento.hasMany(models.Comite, {
-    foreignKey: 'idevento',
-    as: 'Comites'
-  });
-  // models/Evento.js (dentro de associate)
 Evento.belongsToMany(models.TiposDeEvento, { 
   through: models.EventoTipo,             
   foreignKey: 'idevento',
   otherKey: 'idtipoevento',
   as: 'tiposDeEvento'
+});
+Evento.belongsTo(models.Fase, {
+  foreignKey: 'idfase', 
+  as: 'fase',           
+});
+  Evento.belongsTo(models.Layout, {
+  foreignKey: 'idlayout',
+  as: 'Layout'
 });
 
   };

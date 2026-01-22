@@ -14,12 +14,12 @@ export default (sequelize, DataTypes) => {
         key: 'idusuario'
       }
     },
-    idfacultad: {
+    facultad_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'facultad',
-        key: 'idfacultad'
+        key: 'facultad_id'
       }
     },
     idcarrera: {
@@ -37,7 +37,7 @@ export default (sequelize, DataTypes) => {
 
   Academico.associate = function(models) {
     Academico.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
-    Academico.belongsTo(models.Facultad, { foreignKey: 'idfacultad', as: 'facultad' });
+    Academico.belongsTo(models.Facultad, { foreignKey: 'facultad_id', as: 'facultad' });
     Academico.belongsTo(models.Carrera, { foreignKey: 'idcarrera', as: 'carrera' });
   };
 

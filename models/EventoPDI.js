@@ -1,29 +1,30 @@
 export default (sequelize,DataTypes) => {
-  const ObjetivoPDI = sequelize.define('ObjetivoPDI', {
-    idobjetivo_pdi: {
+  const EventoPDI = sequelize.define('evento_pdi', {
+    idevento_pdi: {
       type: DataTypes.INTEGER,
       primaryKey: true, // ← Agregar esta línea
       autoIncrement: true,
       allowNull: false,
     },
-    idobjetivo: {
+    idevento: {
       type: DataTypes.INTEGER,
       allowNull: false, // ← Agregar allowNull: false para consistencia
       references: {
-        model: 'Objetivo',
-        key: 'idobjetivo',
+        model: 'evento',
+        key: 'idevento',
       },
     },
     descripcion: {
       type: DataTypes.STRING,
       allowNull: true,
+      field: 'descripcion',
     },
   }, {
-    tableName: 'objetivo_pdi',
+    tableName: 'evento_pdi',
     timestamps: false,
   });
-    ObjetivoPDI.associate = function(models){
-      ObjetivoPDI.belongsTo(models.Objetivo, { foreignKey: 'idobjetivo', as: 'objetivo' });
+    EventoPDI.associate = function(models){
+      EventoPDI.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
     }
-  return ObjetivoPDI;
+  return EventoPDI;
 };

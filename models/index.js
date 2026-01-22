@@ -66,7 +66,11 @@ export const initModels = async () => {
     'EventoComite.js',
     'Academico.js',
     'TiposDeEvento.js',
-    'Layouts.js'
+    'Layouts.js',
+    'Fase.js',
+    'Actividad.js',
+    'Servicio.js'
+    
   ];
 
   // Cargar en orden

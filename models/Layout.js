@@ -33,6 +33,11 @@ export default function(sequelize,DataTypes) {
     tableName: 'layouts',
     timestamps: false
   });
-
+  Layout.associate = function(models) {
+  Layout.hasMany(models.Evento, {
+  foreignKey: 'idlayout',
+  as: 'Eventos'
+});
+  };
   return Layout;
 };

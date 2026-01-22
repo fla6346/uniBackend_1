@@ -248,3 +248,187 @@ export const getHistoricalData = asyncHandler(async (req, res) => {
     });
   }
 });
+
+export const getMyDashboardStats = asyncHandler(async (req, res) => {
+  try {
+    const models = await getModels();
+    const { idusuario } = req.user;
+
+    if (!idusuario) {
+      return res.status(401).json({ error: 'Usuario no identificado' });
+    }
+
+    const { Evento, Academico } = models;
+
+    // Buscar perfil académico
+    const academicos = await Academico.findAll({
+      where: { idusuario }
+    });
+
+    if (!academicos || academicos.length === 0) {
+      return res.status(403).json({ error: 'No tienes perfil de académico registrado.' });
+    }
+
+    const idsAcademico = academicos.map(a => a.idacademico);
+
+    // Contar eventos totales
+    const totalEvents = await Evento.count({
+      where: { idacademico: idsAcademico }
+    });
+
+    // Contar eventos por estado
+    const eventosPorEstado = await Evento.findAll({
+      attributes: ['estado'],
+      where: { idacademico: idsAcademico }
+    });
+
+    const estadoCounts = {};
+    eventosPorEstado.forEach(evento => {
+      const estado = evento.estado || 'sin_estado';
+      estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
+    });
+
+    // Eventos aprobados este mes
+    const primerDiaDelMes = new Date();
+    primerDiaDelMes.setDate(1);
+    primerDiaDelMes.setHours(0, 0, 0, 0);
+
+    const eventosAprobadosMes = eventosPorEstado.filter(evento => {
+      const fechaEvento = new Date(evento.createdAt);
+      return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
+    }).length;
+
+    const eventosAprobados = estadoCounts.aprobado || 0;
+    const tasaAprobacion = totalEvents > 0 
+      ? Math.round((eventosAprobados / totalEvents) * 100) 
+      : 0;
+
+    const stats = {
+      totalEvents,
+      estadoCounts,
+      eventosAprobadosMes,
+      tasaAprobacion,
+    };
+
+    console.log(`✅ Estadísticas cargadas para usuario ${idusuario}`);
+    res.status(200).json(stats);
+    
+  } catch (error) {
+    console.error('❌ Error en getMyDashboardStats:', error);
+    res.status(500).json({ 
+      error: 'Error al cargar tus estadísticas',
+      message: error.message 
+    });
+  }
+});
+export const getMyHistoricalData = asyncHandler(async (req, res) => {
+  try {
+    const models = await getModels();
+    const { Evento, Academico } = models;
+
+    const academicos = await Academico.findAll({
+      where: { idusuario: req.user.idusuario }
+    });
+
+    if (!academicos || academicos.length === 0) {
+      return res.status(403).json({ error: 'No tienes perfil de académico.' });
+    }
+
+    const idsAcademico = academicos.map(a => a.idacademico);
+
+    const now = new Date();
+    const data = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now);
+      date.setMonth(date.getMonth() - i);
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+
+      const eventos = await Evento.findAll({
+        where: {
+          idacademico: idsAcademico,
+          createdAt: { [Op.between]: [start, end] }
+        },
+        attributes: ['estado']
+      });
+
+      const total = eventos.length;
+
+      data.push({
+        name: start.toLocaleString('es-ES', { month: 'short', year: '2-digit' }),
+        eventos: total
+      });
+    }
+
+    res.status(200).json({ historical: data });
+  } catch (error) {
+    console.error('❌ Error en getMyHistoricalData:', error);
+    res.status(500).json({ 
+      error: 'Error al cargar tu historial',
+      message: error.message 
+    });
+  }
+});
+
+export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
+  try {
+    const models = await getModels();
+    const { Evento, sequelize } = models;
+    const { idusuario } = req.user;
+
+    if (!idusuario) {
+      return res.status(401).json({ error: 'Usuario no identificado' });
+    }
+
+    console.log('🔍 Buscando comités para idusuario:', idusuario);
+
+ const committeeRecords = await sequelize.query(
+  `SELECT idevento, created_at FROM public.comite WHERE idusuario = :idusuario`,
+  {
+    replacements: { idusuario: idusuario },
+    type: sequelize.QueryTypes.SELECT
+  }
+);
+    console.log('✅ Registros encontrados:', committeeRecords);
+
+    if (committeeRecords.length === 0) {
+      return res.status(200).json({ events: [] });
+    }
+
+    const eventoIds = committeeRecords.map(record => record.idevento);
+
+    // Obtener detalles de los eventos
+    const events = await Evento.findAll({
+      where: { idevento: eventoIds },
+      attributes: [
+        'idevento',
+        'nombreevento',
+        'descripcion',
+        'fechaevento',
+        'estado',
+        'createdAt'
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Mapear con la fecha de asignación
+    const eventsWithAssignment = events.map(event => {
+      const assignment = committeeRecords.find(r => r.idevento === event.idevento);
+      return {
+        ...event.get({ plain: true }),
+        assignedAt: assignment?.created_at,
+        role: 'comité'
+      };
+    });
+
+    res.status(200).json({ events: eventsWithAssignment });
+    
+  } catch (error) {
+    console.error('❌ Error en getMyCommitteeEvents:', error);
+    res.status(500).json({ 
+      error: 'Error al cargar tus eventos como comité',
+      message: error.message 
+    });
+  }
+});
