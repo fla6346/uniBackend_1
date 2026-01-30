@@ -19,7 +19,7 @@
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
     "fs-extra": "^11.3.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.1",
     "openai": "^6.9.0",
     "pdfkit": "^0.17.1",

@@ -69,7 +69,10 @@ export const initModels = async () => {
     'Layouts.js',
     'Fase.js',
     'Actividad.js',
-    'Servicio.js'
+    'Servicio.js',
+    'Croquis.js',
+    'Estudiantes.js'
+
     
   ];
 

@@ -26,8 +26,12 @@ export const createEvento = async (req, res) => {
   const t = await sequelize.transaction();
 try {
    const models = await getModels(); 
-    const { Evento, Objetivo, Resultado, Recurso, User, Comite, Segmento, ObjetivoPDI, ClasificacionEstrategica, Argumentacion } = models;
-
+    const { Evento, Objetivo, Resultado, Recurso, User, Comite, Segmento, ObjetivoPDI, ClasificacionEstrategica, Argumentacion,Notificacion } = models;
+  
+    const admins = await Usuario.findAll({
+    where: { rol: 'admin' }, // o como identifiques a los admins
+    attributes: ['idusuario']
+  });
   const data = req.body;
   const nuevoEvento = await Evento.create({
     nombreevento: data.nombreevento,
@@ -864,6 +868,106 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
     return res.status(500).json({ error: 'Error al cargar eventos aprobados' });
   }
 });
+export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
+  const models = await getModels();
+  const { Evento, User, Academico, Facultad } = models;
+  
+  try {
+    const userId = req.user.idusuario;
+    const userRole = req.user.role;
+    let eventos;
+
+    if (userRole === 'admin' || userRole === 'daf') {
+      eventos = await Evento.findAll({
+        where: { estado: 'aprobado' },
+        distinct: true,
+        attributes: { include: ['idfase'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+    } else if (userRole === 'academico') {
+      eventos = await Evento.findAll({
+        where: { 
+          estado: 'aprobado',
+          idacademico: userId  // 👈 CLAVE: Solo eventos creados por este usuario
+        },
+        distinct: true,
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+    } else {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+
+    // ✅ Deduplicar eventos por ID
+    const eventosUnicos = Array.from(
+      new Map(eventos.map(e => [e.idevento, e])).values()
+    );
+
+    // ✅ Formatear respuesta
+    const eventosFormateados = eventosUnicos.map(event => {
+      const creador = event.academicoCreador;
+      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
+
+      return {
+        id: event.idevento,
+        title: event.nombreevento || 'Sin título',
+        description: event.descripcion || 'Sin descripción',
+        date: event.fechaevento ? new Date(event.fechaevento).toLocaleDateString('es-ES') : 'N/A',
+        time: event.horaevento || 'N/A',
+        location: event.lugarevento || 'Sin ubicación',
+        organizer: creador 
+          ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
+          : 'Sin organizador',
+        category: 'General',
+        submittedBy: creador 
+          ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
+          : 'Sistema',
+        submittedDate: event.createdAt || event.fechaevento,
+        approvedAt: event.fecha_aprobacion 
+          ? new Date(event.fecha_aprobacion).toLocaleString('es-ES') 
+          : null,
+        approvedBy: event.admin_aprobador || null,
+        additionalComments: event.comentarios_admin || null,
+        idfase: event.idfase || 1,
+        faculty: facultadNombre
+      };
+    });
+
+    return res.status(200).json(eventosFormateados);
+  } catch (error) {
+    console.error('Error en getEventosAprobadosPorFacultad:', error);
+    return res.status(500).json({ error: 'Error al cargar eventos aprobados con facultad' });
+  }
+});
 
 export const getEventosNoAprobados = async (req, res) => {
   const models = await getModels();
@@ -876,78 +980,67 @@ export const getEventosNoAprobados = async (req, res) => {
     let eventos;
 
     if (userRole === 'admin' || userRole === 'daf') {
+      // ✅ Admin/DAF ven TODOS los eventos pendientes con información de facultad
       eventos = await Evento.findAll({
         where: { estado: 'pendiente' },
-        include: [
-          {
-            model: User,
-            as: 'academicoCreador',
-            attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
-       
-          },
-          {
-            model: User,
-            as: 'comite',
-            attributes: [],
-            required: false
-          }
-        ],
+        distinct: true,
+        attributes: { include: ['idfase'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
         order: [['createdAt', 'DESC']]
       });
 
-    }  else if (userRole === 'academico') {
-  // Obtener la facultad del usuario actual
-  const academicoActual = await models.Academico.findOne({
-    where: { idusuario: userId },
-    attributes: ['facultad_id']
-  });
+    } else if (userRole === 'academico') {
+      // ✅ Académicos ven SOLO sus propios eventos pendientes
+      eventos = await Evento.findAll({
+        where: { 
+          estado: 'pendiente',
+          idacademico: userId
+        },
+        distinct: true,
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+    } else {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
 
-  if (!academicoActual || !academicoActual.facultad_id) {
-    console.warn(`Usuario académico ${userId} no tiene facultad asignada.`);
-    return res.status(200).json([]);
-  }
+    // ✅ Deduplicar eventos por ID
+    const eventosUnicos = Array.from(
+      new Map(eventos.map(e => [e.idevento, e])).values()
+    );
 
-  const facultadId = academicoActual.facultad_id;
-
-  // Encontrar todos los usuarios que pertenecen a la misma facultad
-  const usuariosMismaFacultad = await models.Academico.findAll({
-    where: { facultad_id: facultadId },
-    attributes: ['idusuario']
-  });
-
-  const idsUsuarios = usuariosMismaFacultad.map(a => a.idusuario);
-
-  if (idsUsuarios.length === 0) {
-    return res.status(200).json([]);
-  }
-
-  // Obtener eventos pendientes creados por esos usuarios
-  eventos = await Evento.findAll({
-    where: {
-      estado: 'pendiente',
-      idacademico: { [Op.in]: idsUsuarios }
-    },
-    include: [
-      {
-        model: User,
-        as: 'academicoCreador',
-        attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat']
-      },
-      {
-        model: User,
-        as: 'comite',
-        attributes: [],
-        required: false
-      }
-    ],
-    order: [['createdAt', 'DESC']]
-  });
-} 
-
-    // Formatear respuesta
-    const eventosFormateados = eventos.map(event => {
+    // ✅ Formatear respuesta
+    const eventosFormateados = eventosUnicos.map(event => {
       const creador = event.academicoCreador;
-      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin área';
+      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
 
       return {
         id: event.idevento,
@@ -972,7 +1065,7 @@ export const getEventosNoAprobados = async (req, res) => {
         rejectionReason: event.razon_rechazo,
         classificationId: event.idclasificacion,
         resultId: event.idresultado,
-        area: facultadNombre
+        area: facultadNombre // ✅ Campo 'area' para mostrar en el frontend
       };
     });
 
@@ -983,6 +1076,7 @@ export const getEventosNoAprobados = async (req, res) => {
     return res.status(500).json({ error: 'Error al cargar eventos pendientes' });
   }
 };
+  
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {

@@ -3,7 +3,7 @@ import {getModels} from '../models/index.js ';
 import { Op, where } from 'sequelize';
 import bcrypt from 'bcryptjs'; // Para hashear contraseñas
 import asyncHandler from 'express-async-handler'; // Para manejo de errores async
-
+import jwt from 'jsonwebtoken';
 
 export const createUser = asyncHandler(async (req, res) => {
   const models = await getModels();

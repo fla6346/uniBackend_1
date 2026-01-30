@@ -1,5 +1,6 @@
 import {getModels} from '../models/index.js ';
 import asyncHandler from 'express-async-handler';
+import { sequelize } from '../config/db.js';
 
 // Constants for better maintainability
 const OBJETIVO_TYPES = {
@@ -751,11 +752,13 @@ export const deleteEvento = asyncHandler(async (req, res) => {
 
 // Raw query functions (kept for compatibility)
 export const fetchEventsWithRawQuery = async () => {
+  const models = await getModels();
+  const { Evento } = models;
   try {
     console.log('[DB-RAW] Buscando eventos con consulta directa...');
     
-    const [eventos] = await sequelize.query(
-      "SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento FROM evento ORDER BY fechaevento DESC"
+    const eventos = await Evento.findAll(
+      'SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento FROM evento ORDER BY fechaevento DESC'
     );
     
     console.log(`[DB-RAW] Se encontraron ${eventos.length} eventos.`);

@@ -50,7 +50,7 @@ const startServer = async () => {
     const profileRoutes = (await import('./routes/profileRoutes.js')).default;  
     const recursoRoutes = (await import('./routes/recursosRoutes.js')).default;
     const layoutsRoutes = (await import('./routes/layoutsRoutes.js')).default;
-
+    const estudiantesRoutes = (await import('./routes/estudiantesRoutes.js')).default;
     app.use('/api/auth', authRoutes);
     app.use('/api/categories', categoryRoutes);
     app.use('/api/locations', locationRoutes);
@@ -64,7 +64,8 @@ const startServer = async () => {
     app.use('/api/croquis', croquisRoutes);
     app.use('/api/profile',profileRoutes);
     app.use('/api/recursos', recursoRoutes);
-    app.use('/api/layouts',layoutsRoutes)
+    app.use('/api/layouts',layoutsRoutes);
+    app.use('/api/estudiantes',estudiantesRoutes);
     app.use('/uploads', express.static(path.join(__dirname,'uploads')));
 
     app.get('/api', (req, res) => {

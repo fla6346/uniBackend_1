@@ -2,12 +2,14 @@ import {getModels} from '../models/index.js ';
 
 export const getFacultades = async (req, res) => {
   try {
-    const facultades = await models.Facultad.findAll({
+    const models =  await getModels();
+    const Facultad = models;
+    const facultades = await Facultad.findAll({
       where: { habilitado: 1 },
-      attributes: ['idfacultad', 'nombre_facultad']
+      attributes: ['facultad_id', 'nombre_facultad']
     });
      const formatted = facultades.map(f => ({
-      idfacultad: f.idfacultad,
+      idfacultad: f.facultad_id,
       nombre: f.nombre_facultad
     }));
 
