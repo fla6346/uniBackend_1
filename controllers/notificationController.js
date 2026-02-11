@@ -7,7 +7,7 @@ import { getModels } from '../models/index.js';
  */
 export const Notification = asyncHandler(async (req, res) => {
    try {
-    const userId = req.user.idusuario; // Esto viene de tu middleware `protect`
+    const userId = req.user.idusuario; 
     const models = await getModels();
     const {Notificacion} = models;
     const notificaciones = await Notificacion.findAll({

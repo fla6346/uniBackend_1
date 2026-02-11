@@ -924,7 +924,31 @@ export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
         order: [['createdAt', 'DESC']]
       });
     } else {
-      return res.status(403).json({ message: 'Acceso denegado' });
+      if(userRole === 'student') {
+          eventos = await Evento.findAll({
+        where: { estado: 'aprobado' },
+        distinct: true,
+        attributes: { include: ['idfase'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+      } else {
+        return res.status(403).json({ message: 'Acceso denegado' });
+      }
     }
 
     // ✅ Deduplicar eventos por ID
@@ -1153,7 +1177,6 @@ export const getHistoricalData = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error al cargar datos históricos' });
   }
 });
-// Nueva función para obtener evento con todos los detalles
 export const getEventoCompletoById = asyncHandler(async (req, res) => {
   const models = await getModels();
   const { Evento, User, Recurso, ClasificacionEstrategica, Subcategoria } = models;
@@ -1222,3 +1245,238 @@ export const getEventoCompletoById = asyncHandler(async (req, res) => {
     });
   }
 });
+export const getEstudianteFacultad = asyncHandler(async (req, res) => {
+  try {
+    const { facultad_id } = req.params;
+     const facultadId = parseInt(facultad_id);
+
+      if (isNaN(facultadId)) {
+      return res.status(400).json({ message: 'ID de facultad inválido' });
+    }
+    console.log('🔍 getEstudianteFacultad - Parámetro recibido:', facultad_id);
+    
+
+
+    const models = await getModels();
+    const { Evento, User, Academico } = models;
+    
+    console.log('📡 Buscando eventos aprobados para facultad_id:', facultadId);
+    
+    // Buscar eventos por la facultad del académico creador
+    const eventos = await Evento.findAll({
+      where: {
+        estado: 'aprobado'
+      },
+      include: [{
+        model: User,
+        as: 'academicoCreador',
+        attributes: ['nombre', 'apellidopat', 'apellidomat'],
+        required: true,
+        include: [{
+          model: Academico,
+          as: 'academico',
+          where: { facultad_id: facultadId },
+          required: true,
+          attributes: ['facultad_id']
+        }]
+      }],
+      order: [['fechaevento', 'ASC']]
+    });
+
+    console.log(`📊 Eventos encontrados: ${eventos.length}`);
+
+    const eventosFormateados = eventos.map(evento => {
+      const creador = evento.academicoCreador;
+      return {
+        idevento: evento.idevento,
+        nombre: evento.nombreevento,
+        fecha_inicio: evento.fechaevento || evento.fecha_inicio,
+        fecha_fin: evento.fecha_fin,
+        ubicacion: evento.lugarevento,
+        tipo_evento: evento.tipo_evento || 'Evento',
+        estado: evento.estado,
+        organizador: creador
+          ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim()
+          : 'Sin organizador',
+        descripcion: evento.descripcion
+      };
+    });
+
+    console.log(`✅ ${eventosFormateados.length} eventos formateados`);
+    res.status(200).json(eventosFormateados);
+    
+  } catch (error) {
+    console.error('❌ Error en getEstudianteFacultad:', error);
+    console.error('❌ Stack:', error.stack);
+    
+    res.status(500).json({ 
+      message: 'Error al obtener eventos de la facultad', 
+      error: error.message
+    });
+  }
+});
+export const getCarreraById = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🔍 getCarreraById - Buscando carrera con ID:', id);
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de carrera inválido' });
+    }
+
+    const models = await getModels();
+    const { Carrera } = models;
+
+    // Tu tabla se llama 'carrera' y la PK es 'idcarrera'
+    const carrera = await Carrera.findByPk(parseInt(id));
+
+    if (!carrera) {
+      console.log(`❌ Carrera con idcarrera=${id} no encontrada`);
+      return res.status(404).json({ message: 'Carrera no encontrada' });
+    }
+
+    console.log('✅ Carrera encontrada:', carrera.nombre_carrera);
+
+    res.status(200).json({
+      idcarrera: carrera.idcarrera,
+      nombre: carrera.nombre_carrera,
+      descripcion: carrera.descripcion || '',
+      idfacultad: carrera.idfacultad
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo carrera:', error);
+    res.status(500).json({ 
+      message: 'Error al obtener carrera', 
+      error: error.message 
+    });
+  }
+});
+
+export const getFacultadById = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🔍 getFacultadById - Buscando facultad con ID:', id);
+    
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de facultad inválido' });
+    }
+
+    const models = await getModels();
+    const { Facultad } = models;
+
+    // ⚠️ IMPORTANTE: Tu tabla 'facultad' tiene PK = 'facultad_id'
+    // Pero tu estudiante tiene 'idfacultad' que NO es la PK
+    // Necesitamos buscar por 'facultad_id' cuando el frontend pasa ese valor
+    
+    const facultadId = parseInt(id);
+    
+    // Buscar por la PK correcta
+    const facultad = await Facultad.findOne({
+      where: { facultad_id: facultadId }
+    });
+
+    if (!facultad) {
+      console.log(`❌ Facultad con facultad_id=${id} no encontrada`);
+      
+      // Información de depuración
+      const todasFacultades = await Facultad.findAll({ 
+        attributes: ['facultad_id', 'nombre_facultad'] 
+      });
+      console.log('📋 Facultades disponibles:', todasFacultades);
+      
+      return res.status(404).json({ message: 'Facultad no encontrada' });
+    }
+
+    console.log('✅ Facultad encontrada:', facultad.nombre_facultad);
+
+    res.status(200).json({
+      idfacultad: facultad.facultad_id,  // ← Frontend espera 'idfacultad'
+      nombre: facultad.nombre_facultad,
+      descripcion: facultad.descripcion || ''
+    });
+
+  } catch (error) {
+    console.error('❌ Error obteniendo facultad:', error);
+    console.error('❌ Stack completo:', error.stack);
+    
+    res.status(500).json({ 
+      message: 'Error al obtener facultad', 
+      error: error.message 
+    });
+  }
+});
+export const diagnosticarModelos = asyncHandler(async (req, res) => {
+  try {
+    const models = await getModels();
+    
+    console.log('\n========== DIAGNÓSTICO DE MODELOS ==========');
+    console.log('📋 Modelos disponibles:', Object.keys(models));
+    console.log('============================================\n');
+    
+    // Intentar obtener carrera
+    let carreraInfo = 'NO DISPONIBLE';
+    try {
+      if (models.Carrera) {
+        const carrera = await models.Carrera.findByPk(1);
+        carreraInfo = carrera ? carrera.toJSON() : 'No existe carrera con ID 1';
+      }
+    } catch (e) {
+      carreraInfo = `Error: ${e.message}`;
+    }
+    
+    // Intentar obtener facultad
+    let facultadInfo = 'NO DISPONIBLE';
+    try {
+      if (models.Facultad) {
+        const facultad = await models.Facultad.findOne({ where: { facultad_id: 1 } });
+        facultadInfo = facultad ? facultad.toJSON() : 'No existe facultad con facultad_id 1';
+      }
+    } catch (e) {
+      facultadInfo = `Error: ${e.message}`;
+    }
+    
+    // Intentar con nombre alternativo
+    let facultadAlt = 'NO PROBADO';
+    try {
+      if (models.Facultades) {
+        const facultad = await models.Facultades.findOne({ where: { facultad_id: 1 } });
+        facultadAlt = facultad ? facultad.toJSON() : 'No existe';
+      }
+    } catch (e) {
+      facultadAlt = `Error: ${e.message}`;
+    }
+    
+    res.json({
+      modelosDisponibles: Object.keys(models),
+      carrera: carreraInfo,
+      facultad: facultadInfo,
+      facultadAlternativo: facultadAlt
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

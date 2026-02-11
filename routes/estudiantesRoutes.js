@@ -1,25 +1,20 @@
 import express from 'express';
 import { 
-  getEstudianteByUsuario, 
+  getEstudiantes,
   getAllEstudiantes,
   getEstudianteById,
-  createEstudiante,
   updateEstudiante,
   deleteEstudiante,
-  getEstudiantes
+  getEventosPorFacultadEstudiante
 } from '../controllers/estudiantesController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect,protect1 } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-router.get('/estudiantes/usuario/:idusuario', protect, getEstudiantes);
-/*router.get('/estudiantes/usuario/:idusuario', protect, getEstudianteByUsuario);
-router.get('/estudiantes', protect, getAllEstudiantes);
+router.get('/facultad/:idfacultad', protect1, getEventosPorFacultadEstudiante);
+router.get('/', protect, getAllEstudiantes);
+router.get('/:idusuario', protect1, getEstudiantes);
+router.get('/:id', protect, getEstudianteById);
+router.put('/:id', protect, updateEstudiante);
+router.delete('/:id', protect, deleteEstudiante);
 
-router.get('/estudiantes/:id', protect, getEstudianteById);
-
-router.post('/estudiantes', protect, createEstudiante);
-
-router.put('/estudiantes/:id', protect, updateEstudiante);
-
-router.delete('/estudiantes/:id', protect, deleteEstudiante);*/
 export default router;
