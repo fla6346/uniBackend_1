@@ -14,8 +14,10 @@ import {
   getDashboardStats,
   getHistoricalData,
   getEventosAprobadosPorFacultad,
+ 
   //getEventosPendientesPorArea
   } from '../controllers/proyectoController.js';
+  //import { getEventDetailsById } from '../controllers/evento.js';
 import {protect,authorize} from '../middleware/authMiddleware.js';
 const router = express.Router();
 
@@ -29,6 +31,7 @@ router.get('/aprobados',protect, getEventosAprobados);
 router.get('/aprobados-por-facultad',protect, getEventosAprobadosPorFacultad);
 router.get('/dashboard/stats', protect, getDashboardStats);
 router.get('/dashboard/historical', protect, getHistoricalData);
+//router.get('/details/:id', getEventDetailsById);
 
 
 //router.get('/listar-pendientes', pendientes); // si necesitas esta ruta

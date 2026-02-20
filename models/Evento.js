@@ -146,7 +146,6 @@ Evento.belongsTo(models.Fase, {
   foreignKey: 'idlayout',
   as: 'Layout'
 });
-
   };
 
   return Evento;

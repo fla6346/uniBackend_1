@@ -496,6 +496,9 @@ export const updateEvento = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const idevento = parseInt(id, 10);
+     const models = await getModels();
+  const { Evento} = models;
+
 
     if (isNaN(idevento) || idevento <= 0) {
       await t.rollback();
@@ -511,50 +514,60 @@ export const updateEvento = asyncHandler(async (req, res) => {
       await t.rollback();
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
+     const camposActualizables = [
+      'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
+      'responsable', 'idlayout', 'descripcion', 'idacademico', 'idclasificacion'
+    ];
+    
+    const camposParaActualizar = {};
+    for (const campo of camposActualizables) {
+      if (req.body[campo] !== undefined) {
+        camposParaActualizar[campo] = req.body[campo];
+      }
+    }
+    
+    if (Object.keys(camposParaActualizar).length > 0) {
+      await Evento.update(camposParaActualizar, {
+        where: { idevento },
+        transaction: t
+      });
+    }
 
   const TIPO_MAPEO = {
   actividadesPrevias: 'Previa',
   actividadesDurante: 'Durante',
   actividadesPost: 'Posterior'
 };
-    const tiposActividad = ['actividadesPrevias', 'actividadesDurante', 'actividadesPost'];
-   
-for (const tipoFrontend of tiposActividad) {
-  const tipoDB = TIPO_MAPEO[tipoFrontend]; // ✅ Ej: 'actividadesPrevias' → 'previa'
-
-  if (!tipoDB) {
-    console.warn(`Tipo no mapeado: ${tipoFrontend}`);
-    continue;
-  }
-
-  if (Array.isArray(req.body[tipoFrontend])) {
-    await sequelize.query(
-      'DELETE FROM actividades WHERE idevento = ? AND tipo = ?',
-      { replacements: [idevento, tipoDB], transaction: t }
-    );
-
-    // Insertar nuevas
-    for (const act of req.body[tipoFrontend]) {
-      await sequelize.query(
-        `INSERT INTO actividades (idevento, nombre, responsable, fecha_inicio, fecha_fin, lugar, tipo) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        {
-          replacements: [
-            idevento,
-            act.nombreActividad?.trim() || '',
-            act.responsable?.trim() || '',
-            act.fechaInicio || null,
-            act.fechaFin || null,
-            act.lugar?.trim() || '', // si existe
-            tipoDB // ✅ Valor exacto: 'Previa', 'Durante', 'Posterior'
-          ],
-          transaction: t
+   for (const [tipoFrontend, tipoDB] of Object.entries(TIPO_MAPEO)) {
+      if (Array.isArray(req.body[tipoFrontend])) {
+        // Eliminar actividades anteriores de este tipo
+        await sequelize.query(
+          'DELETE FROM actividades WHERE idevento = ? AND tipo = ?',
+          { replacements: [idevento, tipoDB], transaction: t }
+        );
+        
+        // Insertar nuevas actividades
+        for (const act of req.body[tipoFrontend]) {
+          await sequelize.query(
+            `INSERT INTO actividades (idevento, nombre, responsable, fecha_inicio, fecha_fin, tipo)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            {
+              replacements: [
+                idevento,
+                act.nombreActividad?.trim() || '',
+                act.responsable?.trim() || '',
+                act.fechaInicio || null,
+                act.fechaFin || null,
+                tipoDB
+              ],
+              transaction: t
+            }
+          );
         }
-      );
+      }
     }
-  }
-}
-    // 2. Servicios
+
+    // === 3. ACTUALIZAR SERVICIOS ===
     if (Array.isArray(req.body.serviciosContratados)) {
       await sequelize.query(
         'DELETE FROM servicio WHERE idevento = ?',
@@ -562,12 +575,12 @@ for (const tipoFrontend of tiposActividad) {
       );
       
       for (const s of req.body.serviciosContratados) {
-        const fechaEntrega = s.fechaInicio instanceof Date 
+        const fechaEntrega = s.fechaInicio instanceof Date
           ? s.fechaInicio.toISOString().split('T')[0]
           : (typeof s.fechaInicio === 'string' ? s.fechaInicio.split('T')[0] : null);
           
         await sequelize.query(
-          `INSERT INTO servicio (idevento, nombreservicio, fechadeentrega, caracteristicas, observaciones) 
+          `INSERT INTO servicio (idevento, nombreservicio, fechadeentrega, caracteristicas, observaciones)
            VALUES (?, ?, ?, ?, ?)`,
           {
             replacements: [
@@ -583,51 +596,91 @@ for (const tipoFrontend of tiposActividad) {
       }
     }
 
-  if (req.body.nuevaFase?.nrofase) {
-  const nrofase = parseInt(req.body.nuevaFase.nrofase, 10);
-  if (!isNaN(nrofase)) {
-    const [faseExistente] = await sequelize.query(
-      'SELECT idfase FROM fase WHERE idevento = ? AND nrofase = ?',
-      { replacements: [idevento, nrofase], transaction: t }
-    );
-
-    if (faseExistente.length > 0) {
-      // ✅ Actualizar fase existente (si necesitas guardar más datos)
-      // await sequelize.query('UPDATE fase SET ...', { ... });
-    } else {
-      // ✅ Crear NUEVA fase para este evento
+    // === 4. ACTUALIZAR AMBIENTES ===
+    /*if (Array.isArray(req.body.ambientes)) {
       await sequelize.query(
-        'INSERT INTO fase (idevento, nrofase) VALUES (?, ?)',
-        { replacements: [idevento, nrofase], transaction: t }
+        'DELETE FROM ambiente WHERE idevento = ?',
+        { replacements: [idevento], transaction: t }
       );
-    }
-  }
-}
-
-    // ✅ NUEVO: Actualizar idlayout si viene en el body
-    if ('idlayout' in req.body) {
-      const idlayout = req.body.idlayout === null ? null : parseInt(req.body.idlayout, 10);
-      if (isNaN(idlayout) && req.body.idlayout !== null) {
-        console.warn('idlayout no es un número válido ni null:', req.body.idlayout);
+      
+      for (const amb of req.body.ambientes) {
+        await sequelize.query(
+          `INSERT INTO ambiente (idevento, nombre, requisito, observaciones)
+           VALUES (?, ?, ?, ?)`,
+          {
+            replacements: [
+              idevento,
+              amb.nombre?.trim() || '',
+              amb.requisito?.trim() || '',
+              amb.observaciones?.trim() || ''
+            ],
+            transaction: t
+          }
+        );
       }
-      await sequelize.query(
-        'UPDATE evento SET idlayout = ? WHERE idevento = ?',
-        { replacements: [idlayout, idevento], transaction: t }
-      );
+    }*/
+
+    if (req.body.nuevaFase) {
+      const { nrofase } = req.body.nuevaFase;
+      const models = await getModels();
+      const { Fase } = models;
+
+       const [faseRow] = await sequelize.query(
+    'SELECT idfase, nrofase FROM fase WHERE nrofase = ? LIMIT 1',
+    { 
+      replacements: [parseInt(nrofase)],
+      type: sequelize.QueryTypes.SELECT,
+      transaction: t 
+    }
+  );
+
+      if (faseRow) {
+    await sequelize.query(
+      'UPDATE evento SET idfase = ? WHERE idevento = ?',
+      {
+        replacements: [faseRow.idfase, idevento],
+        transaction: t
+      }
+    );
+    console.log(`✅ Evento ${idevento} actualizado a fase ${nrofase} (idfase: ${faseRow.idfase})`);
+  } else {
+    console.warn(`⚠️ Fase con nrofase=${nrofase} no encontrada en catálogo`);
+  }
     }
 
     await t.commit();
-    res.status(200).json({ message: 'Evento actualizado correctamente' });
+
+    const eventoActualizado = await Evento.findByPk(idevento, {
+      include: [
+        { model: models.Fase, as: 'fase', attributes: ['idfase', 'nrofase'] }
+      ]
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Evento actualizado correctamente con fase 2',
+      data: eventoActualizado
+    });
 
   } catch (error) {
     await t.rollback();
-    console.error('Error en updateEvento:', error);
-    res.status(500).json({ 
-      message: 'Error al actualizar evento',
-      error: error.message 
+    
+    console.error('❌ Error en updateEvento:', {
+      message: error.message,
+      stack: error.stack,
+      sql: error.sql
+    });
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Error al actualizar el evento',
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
-});
+
+  
+ });
 
 export const deleteEvento = asyncHandler(async (req, res) => {
   const models = await getModels();
@@ -870,14 +923,40 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
 });
 export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
   const models = await getModels();
-  const { Evento, User, Academico, Facultad } = models;
+  const { Evento, User, Academico, Facultad, Estudiante, Carrera } = models;
   
   try {
     const userId = req.user.idusuario;
     const userRole = req.user.role;
-    let eventos;
+    let facultadId = req.query.facultad_id;
+
+    console.log(`🔍 [${userRole}] Iniciando búsqueda. facultad_id query:`, facultadId);
+
+    if (!facultadId) {
+      if (userRole === 'academico') {
+        const acad = await Academico.findOne({
+          where: { idusuario: userId },
+          attributes: ['facultad_id']
+        });
+        facultadId = acad?.facultad_id;
+      } else if (userRole === 'student') {
+        const est = await Estudiante.findOne({
+          where: { idusuario: userId },
+          attributes: ['idcarrera']
+        });
+        if (est?.idcarrera) {
+          const carrera = await Carrera.findByPk(est.idcarrera, {
+            attributes: ['idfacultad']
+          });
+          facultadId = carrera?.idfacultad;
+        }
+      }
+    }
+
+    let eventos = [];
 
     if (userRole === 'admin' || userRole === 'daf') {
+      console.log('👑 Admin/DAF: Obteniendo TODOS los eventos aprobados');
       eventos = await Evento.findAll({
         where: { estado: 'aprobado' },
         distinct: true,
@@ -899,20 +978,56 @@ export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
         }],
         order: [['createdAt', 'DESC']]
       });
+
     } else if (userRole === 'academico') {
+      if (!facultadId) {
+        return res.status(400).json({ message: 'Académico sin facultad asignada' });
+      }
+      console.log('👨‍ Académico: Filtrando por facultad_id:', facultadId);
       eventos = await Evento.findAll({
-        where: { 
-          estado: 'aprobado',
-          idacademico: userId  // 👈 CLAVE: Solo eventos creados por este usuario
-        },
+        where: { estado: 'aprobado' },
         distinct: true,
         include: [{
           model: User,
           as: 'academicoCreador',
+          required: true,
           attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
           include: [{
             model: Academico,
             as: 'academico',
+            where: { facultad_id: facultadId }, 
+            required: true, 
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+
+    } else if (userRole === 'student') {
+      if (!facultadId) {
+        console.warn('⚠️ Estudiante sin facultad_id');
+        return res.status(200).json([]); 
+      }
+      console.log('🎓 Estudiante: Filtrando por facultad_id:', facultadId);
+      eventos = await Evento.findAll({
+        where: { estado: 'aprobado' },
+        distinct: true,
+        attributes: { include: ['idfase'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          required: true,
+          attributes: ['nombre', 'apellidopat', 'apellidomat'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            where: { facultad_id: facultadId }, 
+            required: true,
             attributes: ['facultad_id'],
             include: [{
               model: Facultad,
@@ -924,43 +1039,18 @@ export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
         order: [['createdAt', 'DESC']]
       });
     } else {
-      if(userRole === 'student') {
-          eventos = await Evento.findAll({
-        where: { estado: 'aprobado' },
-        distinct: true,
-        attributes: { include: ['idfase'] },
-        include: [{
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['nombre', 'apellidopat', 'apellidomat'],
-          include: [{
-            model: Academico,
-            as: 'academico',
-            attributes: ['facultad_id'],
-            include: [{
-              model: Facultad,
-              as: 'facultad',
-              attributes: ['nombre_facultad']
-            }]
-          }]
-        }],
-        order: [['createdAt', 'DESC']]
-      });
-      } else {
-        return res.status(403).json({ message: 'Acceso denegado' });
-      }
+      return res.status(403).json({ message: 'Acceso denegado' });
     }
 
-    // ✅ Deduplicar eventos por ID
     const eventosUnicos = Array.from(
       new Map(eventos.map(e => [e.idevento, e])).values()
     );
 
-    // ✅ Formatear respuesta
+    console.log(`✅ Eventos encontrados para ${userRole}:`, eventosUnicos.length);
+
     const eventosFormateados = eventosUnicos.map(event => {
       const creador = event.academicoCreador;
       const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
-
       return {
         id: event.idevento,
         title: event.nombreevento || 'Sin título',
@@ -968,28 +1058,33 @@ export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
         date: event.fechaevento ? new Date(event.fechaevento).toLocaleDateString('es-ES') : 'N/A',
         time: event.horaevento || 'N/A',
         location: event.lugarevento || 'Sin ubicación',
-        organizer: creador 
+        organizer: creador
           ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
           : 'Sin organizador',
         category: 'General',
-        submittedBy: creador 
+        submittedBy: creador
           ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
           : 'Sistema',
         submittedDate: event.createdAt || event.fechaevento,
-        approvedAt: event.fecha_aprobacion 
-          ? new Date(event.fecha_aprobacion).toLocaleString('es-ES') 
+        approvedAt: event.fecha_aprobacion
+          ? new Date(event.fecha_aprobacion).toLocaleString('es-ES')
           : null,
         approvedBy: event.admin_aprobador || null,
         additionalComments: event.comentarios_admin || null,
         idfase: event.idfase || 1,
-        faculty: facultadNombre
+        faculty: facultadNombre,
+        facultad_id: facultadId
       };
     });
 
     return res.status(200).json(eventosFormateados);
+
   } catch (error) {
-    console.error('Error en getEventosAprobadosPorFacultad:', error);
-    return res.status(500).json({ error: 'Error al cargar eventos aprobados con facultad' });
+    console.error('❌ Error en getEventosAprobadosPorFacultad:', error);
+    return res.status(500).json({ 
+      error: 'Error al cargar eventos aprobados con facultad',
+      details: error.message 
+    });
   }
 });
 

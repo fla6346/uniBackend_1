@@ -83,6 +83,15 @@ export default (sequelize,DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     }, 
+    facultad_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'facultad',
+        key: 'facultad_id'
+      },
+      field: 'facultad_id'
+    }
   },
   {
     tableName: 'usuario',

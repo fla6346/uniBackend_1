@@ -7,12 +7,12 @@ export default (sequelize, DataTypes)=>{
       autoIncrement: true,
       field: 'idcarrera'
     },
-    idfacultad:{
+    facultad_id:{
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'Facultad',
-        key: 'idfacultad'
+        key: 'facultad_id'
     }
   },
     nombreCarrera:{
@@ -25,18 +25,14 @@ export default (sequelize, DataTypes)=>{
     allowNull: false,
     field: 'habilitado'
   },
-  idfacultad: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    field: 'idfacultad'
-  },  
+
   }, {
     tableName: 'carrera',
     timestamps: false // Opcional: si no quieres timestamps en esta tabla
   });
   Carrera.associate = function(models){
      Carrera.belongsTo(models.Facultad, { 
-      foreignKey: 'idfacultad', 
+      foreignKey: 'facultad_id', 
       as: 'facultad' 
     });
     
