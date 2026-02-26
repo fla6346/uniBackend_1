@@ -1,6 +1,6 @@
 // config/database.js
-import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
+const { Sequelize } =require('sequelize');
+const dotenv  = require('dotenv');
 
 // Cargar variables de entorno
 dotenv.config();
@@ -37,4 +37,4 @@ sequelize.authenticate()
     console.error('❌ Error al conectar con la base de datos:', err);
   });
 
-export { sequelize };
+module.exports = sequelize;

@@ -1,5 +1,4 @@
-// models/UserFacultad.js
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const UserFacultad = sequelize.define('UserFacultad', {
     idusuario: {
       type: DataTypes.INTEGER,

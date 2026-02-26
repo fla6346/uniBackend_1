@@ -1,10 +1,9 @@
-// routes/recursoRoutes.js
-import { Router } from 'express';
-import { createRecurso } from '../controllers/recursoController.js';
-import { protect } from '../middleware/authMiddleware.js'; // opcional, si requiere autenticación
+const { Router } = require('express');
+const { createRecurso } = require ('../controllers/recursoController.js');
+const { protect } =require('../middleware/authMiddleware.js'); 
 
 const router = Router();
 
 router.post('/', protect, createRecurso); 
 
-export default router;
+module.exports = router;

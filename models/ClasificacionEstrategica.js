@@ -1,6 +1,7 @@
 // models/Participante.js
+const { DataTypes } = require('sequelize');
 
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
 const Clasificacion = sequelize.define('ClasificacionEstrategica', {
   idClasificacion: {
     type: DataTypes.INTEGER,
@@ -19,7 +20,7 @@ const Clasificacion = sequelize.define('ClasificacionEstrategica', {
   tableName: 'clasificacionEstrategica',
   timestamps: false // O configúralo si tienes columnas createdAt/updatedAt
 });
-  Clasificacion.associate = function(models){
+  Clasificacion.associate = (models) => {
 
   }
 return Clasificacion;

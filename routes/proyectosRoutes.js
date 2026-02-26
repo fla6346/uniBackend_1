@@ -1,7 +1,7 @@
-import express from 'express';
-import {getModels} from '../models/index.js ';
-import { protect, authorize } from '../middleware/authMiddleware.js';
-import { 
+const express = require('express');
+const {getModels} =require('../models/index.js');
+const { protect, authorize } = require('../middleware/authMiddleware.js');
+const { 
   getEventosNoAprobados,
   aprobarEvento,
   rechazarEvento,
@@ -9,13 +9,13 @@ import {
   getCarreraById,
   getFacultadById,
   getEstudianteFacultad
-} from '../controllers/proyectoController.js';
-import {
+} = require('../controllers/proyectoController.js');
+const {
   Notification,
   getUserNotifications,
   markAsRead,
   getUnreadCount
-} from '../controllers/notificationController.js';
+} = require('../controllers/notificationController.js');
 const router = express.Router();
 router.put('/:id/approve',protect,authorize('admin'), aprobarEvento);
 router.put('/:id/reject',protect,authorize('admin'), rechazarEvento);
@@ -29,4 +29,4 @@ router.get('/', getUserNotifications);
 router.patch('/:id/read', markAsRead);
 router.get('/unread-count', getUnreadCount);
 
-export default router;
+module.exports= router;

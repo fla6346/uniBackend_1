@@ -1,5 +1,5 @@
 // models/Objetivo.js
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
   const Resultado = sequelize.define('Resultado', {
     idresultados_esperados: {
       type: DataTypes.INTEGER,

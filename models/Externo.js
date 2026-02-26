@@ -1,4 +1,4 @@
-export default (sequelize,DataTypes)=>{
+module.exports = (sequelize,DataTypes)=>{
     const externo=sequelize.define('Externo',{
        idExterno: { // Clave primaria para esta tabla específica
       type: DataTypes.INTEGER,

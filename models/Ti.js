@@ -1,5 +1,5 @@
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
     const ti=sequelize.define('Ti',{
       idTi: { 
       type: DataTypes.INTEGER,

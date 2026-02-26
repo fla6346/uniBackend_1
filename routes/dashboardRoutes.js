@@ -1,8 +1,7 @@
-// routes/dashboard.js
-import express from 'express';
-import {getModels} from '../models/index.js';
-import { protect, authorize } from '../middleware/authMiddleware.js';
-import { getDashboardStats, getHistoricalData,getMensualStats,getMyHistoricalData,getMyDashboardStats, getMyCommitteeEvents } from '../controllers/dashboardController.js';
+const express = require('express');
+const {getModels} =require ('../models/index.js');
+const { protect, authorize } =require('../middleware/authMiddleware.js');
+const { getDashboardStats, getHistoricalData,getMensualStats,getMyHistoricalData,getMyDashboardStats, getMyCommitteeEvents } =require('../controllers/dashboardController.js');
 const router = express.Router();
 
 router.get('/stats', protect, getDashboardStats);
@@ -12,4 +11,4 @@ router.get('/mensual', protect, getMensualStats);
 router.get('/my-stats', protect, authorize(['academico']), getMyDashboardStats);
 router.get('/my-historical', protect, authorize(['academico']), getMyHistoricalData); 
 router.get('/my-committee-events', protect, authorize(['academico']), getMyCommitteeEvents);
-export default router;
+module.exports = router;

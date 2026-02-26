@@ -1,4 +1,6 @@
-export default (sequelize,DataTypes)=>{
+const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize,DataTypes)=>{
     const Daf=sequelize.define('Daf',{
        idDaf: { 
       type: DataTypes.INTEGER,
@@ -18,7 +20,7 @@ export default (sequelize,DataTypes)=>{
     tableName: 'daf',
     timestamps: false 
   });
-  Daf.associate = function(models){
+  Daf.associate = (models) => {
     Daf.belongsTo(models.User,{foreignKey:'idusuario'});
 
 

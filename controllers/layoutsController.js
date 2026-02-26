@@ -1,8 +1,7 @@
-// controllers/layoutsController.js
-import { getModels } from '../models/index.js';
-import asyncHandler from 'express-async-handler';
+const { getModels } = require('../models/index.js');
+const asyncHandler = require('express-async-handler');
 
-export const crearLayout = asyncHandler(async (req, res) => {
+const crearLayout = asyncHandler(async (req, res) => {
   try {
     const { nombre } = req.body;
     const imagen = req.file;
@@ -21,7 +20,7 @@ export const crearLayout = asyncHandler(async (req, res) => {
       });
     }
 
-    const models = await getModels();
+    const models = getModels();
     const { Layout } = models;
 
     const nuevoLayout = await Layout.create({
@@ -64,8 +63,8 @@ export const crearLayout = asyncHandler(async (req, res) => {
   }
 });
 
-export const obtenerLayouts = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const obtenerLayouts = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Layout } = models;
 
   const layouts = await Layout.findAll({
@@ -73,9 +72,7 @@ export const obtenerLayouts = asyncHandler(async (req, res) => {
     order: [['createdAt', 'DESC']]
   });
 
-  // CORRECCIÓN: Construir la URL completa correctamente
   const layoutsConUrlCompleta = layouts.map(layout => {
-    // Limpiar el nombre del archivo de cualquier prefijo de ruta
     const filename = layout.url_imagen.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     
     const imagenUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
@@ -92,3 +89,7 @@ export const obtenerLayouts = asyncHandler(async (req, res) => {
 
   res.json(layoutsConUrlCompleta);
 });
+module.exports = {
+  crearLayout,
+  obtenerLayouts
+};

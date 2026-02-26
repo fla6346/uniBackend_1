@@ -1,4 +1,4 @@
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
   const EventoPDI = sequelize.define('evento_pdi', {
     idevento_pdi: {
       type: DataTypes.INTEGER,

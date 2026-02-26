@@ -1,5 +1,5 @@
-
-export default (sequelize,DataTypes) =>{
+const { DataTypes } = require('sequelize');
+module.exports = (sequelize,DataTypes) =>{
     const comite = sequelize.define('Comite',{
    
   idevento: {

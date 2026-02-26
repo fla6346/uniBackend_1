@@ -1,9 +1,8 @@
-// controllers/recursoController.js
-import asyncHandler from 'express-async-handler';
-import { getModels } from '../models/index.js';
+const  asyncHandler = require('express-async-handler');
+const { getModels } = require ('../models/index.js');
 
-export const createRecurso = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const createRecurso = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Recurso } = models;
 
   const { nombre_recurso, recurso_tipo, descripcion, habilitado = 1 } = req.body;
@@ -33,3 +32,6 @@ export const createRecurso = asyncHandler(async (req, res) => {
     }
   });
 });
+module.exports = {
+  createRecurso
+};

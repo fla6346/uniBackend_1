@@ -1,7 +1,7 @@
-import express from 'express';
-import { Op } from 'sequelize';
-import { getModels } from '../models/index.js';
-import { 
+const  express = require('express');
+const  { Op } = require('sequelize');
+const  { getModels } = require('../models/index.js');
+const  { 
   createEvento,
   getAllEventos, 
   getEventoById,
@@ -16,9 +16,9 @@ import {
   getEventosAprobadosPorFacultad,
  
   //getEventosPendientesPorArea
-  } from '../controllers/proyectoController.js';
+  } = require('../controllers/proyectoController.js');
   //import { getEventDetailsById } from '../controllers/evento.js';
-import {protect,authorize} from '../middleware/authMiddleware.js';
+const  {protect,authorize} = require('../middleware/authMiddleware.js');
 const router = express.Router();
 
 router.use((req, res, next) => {
@@ -52,4 +52,4 @@ router.get('/:id',protect, getEventoById);
 
 //router.get('/pendientes',pendientes);
 
-export default router;
+module.exports = router;

@@ -1,6 +1,5 @@
-import { DataTypes } from "sequelize";
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const Fase = sequelize.define('Fase', {
     idfase: {
       type: DataTypes.INTEGER,

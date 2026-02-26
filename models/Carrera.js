@@ -1,5 +1,6 @@
+const { DataTypes } = require('sequelize');
 
-export default (sequelize, DataTypes)=>{
+module.exports = (sequelize, DataTypes)=>{
     const Carrera=sequelize.define('Carrera',{
     idcarrera: { 
       type: DataTypes.INTEGER,
@@ -30,7 +31,7 @@ export default (sequelize, DataTypes)=>{
     tableName: 'carrera',
     timestamps: false // Opcional: si no quieres timestamps en esta tabla
   });
-  Carrera.associate = function(models){
+  Carrera.associate = (models) => {
      Carrera.belongsTo(models.Facultad, { 
       foreignKey: 'facultad_id', 
       as: 'facultad' 

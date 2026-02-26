@@ -1,5 +1,5 @@
 // models/TiposDeEvento.js
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const TiposDeEvento = sequelize.define('TiposDeEvento', {
     idtipoevento: {
       type: DataTypes.INTEGER,

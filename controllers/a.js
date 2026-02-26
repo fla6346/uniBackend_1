@@ -1,4 +1,4 @@
-import { sequelize, Evento, Objetivo, Resultado, ObjetivoPDI, TipoObjetivo, Segmento, Recurso } from '../config/db.js';
+/*import { sequelize, Evento, Objetivo, Resultado, ObjetivoPDI, TipoObjetivo, Segmento, Recurso } from '../config/db.js';
 import asyncHandler from 'express-async-handler';
 
 // --- CONSTANTES ---

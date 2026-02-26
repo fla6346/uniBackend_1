@@ -1,6 +1,5 @@
-// models/Layout.js
 
-export default function(sequelize,DataTypes) {
+module.exports = function(sequelize,DataTypes) {
   const Layout = sequelize.define('Layout', {
     idlayout: {
       type: DataTypes.INTEGER,

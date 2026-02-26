@@ -1,5 +1,6 @@
-import {getModels} from '../models/index.js ';
-export default (sequelize, DataTypes) => {
+const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize, DataTypes) => {
   const Administrador = sequelize.define('Administrador', {
     idadministrador: {
       type: DataTypes.INTEGER,
@@ -13,7 +14,7 @@ export default (sequelize, DataTypes) => {
     timestamps: false
   });
 
-  Administrador.associate = function(models) {
+  Administrador.associate = (models) => {
     Administrador.belongsTo(models.User, {
       foreignKey: 'idusuario',
       as: 'usuario'

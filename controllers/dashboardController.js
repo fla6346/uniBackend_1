@@ -1,12 +1,12 @@
-import { getModels } from '../models/index.js';
-import { Op } from 'sequelize';
-import asyncHandler from 'express-async-handler';
+const { getModels } = require('../models/index.js');
+const { Op } = require('sequelize');
+const asyncHandler = require('express-async-handler');
 
-export const getDashboardStats = asyncHandler(async (req, res) => {
+// ✅ GET DASHBOARD STATS
+const getDashboardStats = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { User, Evento, Academico, sequelize } = models;
-
 
     const activeUsers = await User.count({
       where: { habilitado: '1' }
@@ -16,7 +16,6 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     const todosLosEventos = await Evento.findAll({
       attributes: ['estado', 'createdAt']
-      
     });
 
     const estadoCounts = todosLosEventos.reduce((acc, evento) => {
@@ -70,44 +69,45 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       console.warn('Error al cargar eventos por facultad:', queryError.message);
       eventosPorFacultad = {};
     }
+
     let eventosPorDia = [];
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-try {
-  const [results] = await sequelize.query(`
-    SELECT
-      DATE("fecha_aprobacion") as fecha,
-      COUNT(*) as total
-    FROM "evento"
-    WHERE "fecha_aprobacion" IS NOT NULL
-      AND "fecha_aprobacion" >= CURRENT_DATE - INTERVAL '6 days'
-    GROUP BY DATE("fecha_aprobacion")
-    ORDER BY fecha ASC;
-  `);
+    try {
+      const [results] = await sequelize.query(`
+        SELECT
+          DATE("fecha_aprobacion") as fecha,
+          COUNT(*) as total
+        FROM "evento"
+        WHERE "fecha_aprobacion" IS NOT NULL
+          AND "fecha_aprobacion" >= CURRENT_DATE - INTERVAL '6 days'
+        GROUP BY DATE("fecha_aprobacion")
+        ORDER BY fecha ASC;
+      `);
 
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    const dateString = date.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateString = date.toISOString().split('T')[0];
 
-    const found = results.find(row => row.fecha === dateString);
-    eventosPorDia.push({
-      fecha: dateString,
-      total: found ? parseInt(found.total, 10) : 0
-    });
-  }
-} catch (diaError) {
-  console.warn('⚠️ Error al cargar eventos aprobados por día:', diaError.message);
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    eventosPorDia.push({
-      fecha: date.toISOString().split('T')[0],
-      total: 0
-    });
-  }
-}
+        const found = results.find(row => row.fecha === dateString);
+        eventosPorDia.push({
+          fecha: dateString,
+          total: found ? parseInt(found.total, 10) : 0
+        });
+      }
+    } catch (diaError) {
+      console.warn('⚠️ Error al cargar eventos aprobados por día:', diaError.message);
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        eventosPorDia.push({
+          fecha: date.toISOString().split('T')[0],
+          total: 0
+        });
+      }
+    }
     
     const stats = {
       activeUsers,
@@ -132,12 +132,11 @@ try {
   }
 });
 
-export const getMensualStats = asyncHandler(async (req, res) => {
+const getMensualStats = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Evento } = models;
 
-    // Verifica que la tabla tenga eventos con fechaCreacion
     const result = await Evento.sequelize.query(
       `
         SELECT 
@@ -154,14 +153,13 @@ export const getMensualStats = asyncHandler(async (req, res) => {
       { type: Evento.sequelize.QueryTypes.SELECT }
     );
 
-    // Formatear resultados
     const reportes = result.map(row => {
       const total = parseInt(row.totalEvents) || 0;
       const aprobado = parseInt(row.aprobado) || 0;
       const tasa = total > 0 ? parseFloat(((aprobado / total) * 100).toFixed(1)) : 0;
       
       return {
-        mes: row.mes, // Formato: "2025-01"
+        mes: row.mes,
         totalEvents: total,
         aprobado: aprobado,
         pendiente: parseInt(row.pendiente) || 0,
@@ -173,7 +171,7 @@ export const getMensualStats = asyncHandler(async (req, res) => {
       };
     });
 
-    res.status(200).json(reportes); // Siempre devuelve un ARRAY
+    res.status(200).json(reportes);
 
   } catch (error) {
     console.error('❌ Error en getMensualStats:', error);
@@ -184,9 +182,9 @@ export const getMensualStats = asyncHandler(async (req, res) => {
   }
 });
 
-export const getHistoricalData = asyncHandler(async (req, res) => {
+const getHistoricalData = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Evento } = models;
 
     console.log('📈 Calculando datos históricos...');
@@ -233,12 +231,9 @@ export const getHistoricalData = asyncHandler(async (req, res) => {
   }
 });
 
-export const getMyDashboardStats = asyncHandler(async (req, res) => {
-  console.log('🔍 getMyDashboardStats llamado');
-  console.log('📝 req.user:', req.user);
-  console.log('📝 req.headers:', req.headers.authorization);
+const getMyDashboardStats = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { idusuario } = req.user;
 
     if (!idusuario) {
@@ -293,7 +288,6 @@ export const getMyDashboardStats = asyncHandler(async (req, res) => {
       tasaAprobacion,
     };
 
-    console.log(`✅ Estadísticas cargadas para usuario ${idusuario}`);
     res.status(200).json(stats);
     
   } catch (error) {
@@ -304,17 +298,18 @@ export const getMyDashboardStats = asyncHandler(async (req, res) => {
     });
   }
 });
-export const getMyHistoricalData = asyncHandler(async (req, res) => {
+
+const getMyHistoricalData = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Evento, Academico } = models;
-    const {idusuario } = req.user;
+    const { idusuario } = req.user;
 
     if (!idusuario) {
       return res.status(401).json({ error: 'Usuario no identificado' });
     }
     const academicos = await Academico.findAll({
-      where: { idusuario:req.user.idusuario }
+      where: { idusuario: req.user.idusuario }
     });
 
     if (!academicos || academicos.length === 0) {
@@ -358,12 +353,9 @@ export const getMyHistoricalData = asyncHandler(async (req, res) => {
   }
 });
 
-export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
+const getMyCommitteeEvents = asyncHandler(async (req, res) => {
   try {
-    console.log('🔍 [getMyCommitteeEvents] Headers:', req.headers.authorization?.substring(0, 20));
-    console.log('🔍 [getMyCommitteeEvents] req.user:', req.user);
 
-    // ✅ VERIFICACIÓN 1: Validar autenticación
     if (!req.user || !req.user.idusuario) {
       console.error('❌ [getMyCommitteeEvents] Usuario no autenticado o req.user faltante');
       return res.status(401).json({ 
@@ -373,12 +365,10 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     }
 
     const { idusuario } = req.user;
-    console.log(`🔍 [getMyCommitteeEvents] Buscando comités para idusuario: ${idusuario}`);
 
-    const models = await getModels();
+    const models = getModels();
     const { sequelize } = models;
 
-    // ✅ VERIFICACIÓN 2: Verificar estructura de la tabla comite
     try {
       const tableCheck = await sequelize.query(
         `SELECT column_name FROM information_schema.columns 
@@ -390,7 +380,6 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       console.warn('⚠️ No se pudo verificar estructura de tabla:', checkError.message);
     }
 
-    // ✅ CORRECCIÓN: Usar el campo correcto (createdAt en lugar de created_at)
     const committeeRecords = await sequelize.query(
       `SELECT idevento, "created_at" as "createdAt" 
        FROM public.comite 
@@ -401,17 +390,13 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       }
     );
 
-    console.log('✅ [getMyCommitteeEvents] Registros de comité encontrados:', committeeRecords.length);
 
     if (committeeRecords.length === 0) {
-      console.log('ℹ️ [getMyCommitteeEvents] Usuario no pertenece a ningún comité');
       return res.status(200).json({ events: [] });
     }
 
     const eventoIds = committeeRecords.map(record => record.idevento);
 
-    // ✅ VERIFICACIÓN 3: Validar que los IDs sean números
-    console.log('📋 [getMyCommitteeEvents] IDs de eventos:', eventoIds);
 
     const { Evento } = models;
     const events = await Evento.findAll({
@@ -427,9 +412,7 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    console.log('✅ [getMyCommitteeEvents] Eventos encontrados:', events.length);
 
-    // Mapear con la fecha de asignación
     const eventsWithAssignment = events.map(event => {
       const assignment = committeeRecords.find(r => r.idevento === event.idevento);
       return {
@@ -448,7 +431,6 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       type: error.name
     });
     
-    // ✅ MEJORAR: Diferenciar errores de autenticación vs errores del servidor
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
         error: 'Token inválido o expirado',
@@ -463,3 +445,11 @@ export const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     });
   }
 });
+module.exports = {
+  getDashboardStats,
+  getMensualStats,
+  getHistoricalData,
+  getMyDashboardStats,
+  getMyHistoricalData,
+  getMyCommitteeEvents
+};

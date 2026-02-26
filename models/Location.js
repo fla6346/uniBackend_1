@@ -1,5 +1,5 @@
 // D:\Nueva carpeta\backend\models\Location.js
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
 const Location = sequelize.define('Location', {
   id: {
     type: DataTypes.UUID,

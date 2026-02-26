@@ -1,4 +1,4 @@
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const UserComite = sequelize.define('UserComite', {
     idcomite: {
       type: DataTypes.INTEGER,

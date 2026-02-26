@@ -1,5 +1,6 @@
+const { DataTypes } = require('sequelize');
 
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
 const Actividad=sequelize.define('Actividad',{
     idactividad:{
         type: DataTypes.INTEGER,
@@ -29,7 +30,7 @@ const Actividad=sequelize.define('Actividad',{
     tableName:'actividades',
     timestamps:false,
 });
-Actividad.associate = function(models){
+Actividad.associate = (models) => {
     Actividad.belongsTo(models.Evento,{
         foreignKey:'idevento',
         as:'evento',

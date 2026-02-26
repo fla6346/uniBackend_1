@@ -1,10 +1,8 @@
-import express from 'express';
-import { protect } from '../middleware/authMiddleware.js';
-import {
-    getFacultades
-}from '../controllers/facultadController.js';
+const  express = require('express');
 const router = express.Router();
+const  { protect } = require('../middleware/authMiddleware.js');
+const  { getFacultades} = require('../controllers/facultadController.js');
 
 router.get('/facultades', protect, getFacultades);
 
-export default router;
+module.exports = router;

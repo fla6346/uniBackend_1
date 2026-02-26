@@ -1,6 +1,6 @@
-import { underscoredIf } from "sequelize/lib/utils";
+const { DataTypes } = require('sequelize');
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const Academico = sequelize.define('Academico', {
     idacademico: { 
       type: DataTypes.INTEGER,
@@ -39,7 +39,7 @@ export default (sequelize, DataTypes) => {
     underscored: true
   });
 
-  Academico.associate = function(models) {
+  Academico.associate = (models) => {
     Academico.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
     Academico.belongsTo(models.Facultad, { foreignKey: 'facultad_id', as: 'facultad' });
     Academico.belongsTo(models.Carrera, { foreignKey: 'idcarrera', as: 'carrera' });

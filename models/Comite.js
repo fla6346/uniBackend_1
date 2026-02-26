@@ -1,4 +1,6 @@
-export default function(sequelize, DataTypes) {
+const { DataTypes } = require('sequelize');
+
+module.exports = function(sequelize, DataTypes) {
   const Comite = sequelize.define('Comite', {
    idevento: {
   type: DataTypes.INTEGER,
@@ -24,7 +26,7 @@ created_at: {
     timestamps: false
   });
 
-  Comite.associate = function(models) {
+  Comite.associate = (models) => {
    Comite.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
     Comite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'miembroComite' });
   };

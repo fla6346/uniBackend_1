@@ -1,19 +1,17 @@
 // routes/notificacionesRoutes.js
-import { Router } from 'express';
-import {
+const { Router } =require ('express');
+const {
   getUserNotifications,
   markAsRead,
   getUnreadCount,Notification,
   read
-} from '../controllers/notificationController.js';
-import {protect} from '../middleware/authMiddleware.js'; // o como lo tengas
+} = require('../controllers/notificationController.js');
+const {protect} =require('../middleware/authMiddleware.js'); 
 
 const router = Router();
 
-// Rutas reales
-//router.post('/notificaciones', Notification);
 router.get('/', protect, getUserNotifications);
 router.patch('/:id/read', protect, read);
 router.get('/unread-count', protect, getUnreadCount);
 
-export default router;
+module.exports = router;

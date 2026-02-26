@@ -1,9 +1,12 @@
-import {getModels} from '../models/index.js ';
+const  {getModels} = require ('../models/index.js');
 
-export const getFacultades = async (req, res) => {
+const getFacultades = async (req, res) => {
   try {
     const models =  await getModels();
-    const Facultad = models;
+    const Facultad = models.Facultad;
+    if (!Facultad) {
+      return res.status(500).json({ message: 'Modelo Facultad no encontrado.' });
+    }
     const facultades = await Facultad.findAll({
       where: { habilitado: 1 },
       attributes: ['facultad_id', 'nombre_facultad']
@@ -18,4 +21,7 @@ export const getFacultades = async (req, res) => {
     console.error('Error al obtener facultades:', error);
     res.status(500).json({ message: 'Error al cargar las facultades.' });
   }
+};
+module.exports = {
+  getFacultades
 };

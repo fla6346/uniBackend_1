@@ -1,12 +1,12 @@
-// backend/controllers/userController.js
-import {getModels} from '../models/index.js ';
-import { Op, where } from 'sequelize';
-import bcrypt from 'bcryptjs'; // Para hashear contraseñas
-import asyncHandler from 'express-async-handler'; // Para manejo de errores async
-import jwt from 'jsonwebtoken';
+const  {getModels} = require('../models/index.js');
+const  { Op, where } = require('sequelize');
+const  bcrypt = require('bcryptjs'); 
+const  asyncHandler = require('express-async-handler'); 
+const  jwt = require('jsonwebtoken');
+const { get } = require('../routes/eventRoutesNO');
 
-export const createUser = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const createUser = asyncHandler(async (req, res) => {
+  const models = getModels();
   const {User} = models;
   const {
     username,
@@ -78,8 +78,8 @@ export const createUser = asyncHandler(async (req, res) => {
   }
 });
 
-export const getAllUsers = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getAllUsers = asyncHandler(async (req, res) => {
+  const models = getModels();
   const {User,Academico, Carrera} = models;
   const users = await User.findAll({
      include: [
@@ -99,9 +99,9 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   res.status(200).json(users);
 });
 
-export const getCarrera= asyncHandler(async (req,res)=>{
+const getCarrera= asyncHandler(async (req,res)=>{
   try {
-      const models = await getModels();
+      const models =  getModels();
       const {Carrera} = models;
     const carreras = await Carrera.findAll(); // Suponiendo que usas un ORM como Sequelize
     res.status(200).json(carreras);
@@ -109,7 +109,7 @@ export const getCarrera= asyncHandler(async (req,res)=>{
     res.status(500).json({ message: 'Error al obtener carreras', error });
   }
 });
-export const getUserProfile = asyncHandler(async (req, res) => {
+const getUserProfile = asyncHandler(async (req, res) => {
 
   try {
     const userId = req.user.id; // ID del usuario autenticado desde el middleware
@@ -158,8 +158,8 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     });
   }
 });
-export const getUserById = asyncHandler(async (req, res) => {
-   const models = await getModels();
+const getUserById = asyncHandler(async (req, res) => {
+   const models = getModels();
   const {User} = models;
   try {
     const { id } = req.params; // ✅ Obtiene el ID de la URL
@@ -203,8 +203,8 @@ export const getUserById = asyncHandler(async (req, res) => {
   }
 });
 
-  export const getUserById1 = asyncHandler(async (req, res) => {
-     const models = await getModels();
+const getUserById1 = asyncHandler(async (req, res) => {
+     const models = getModels();
   const {User} = models;
   const user = await User.findByPk(req.params.id, {
     attributes: { exclude: ['contrasenia'] }, // Excluir 'contrasenia'
@@ -217,7 +217,7 @@ export const getUserById = asyncHandler(async (req, res) => {
   res.status(200).json(user);
 });
 
-export const updateUserRole = asyncHandler(async (req, res) => {
+const updateUserRole = asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
 
@@ -277,8 +277,8 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     });
   }
 });
-export const updateUser = asyncHandler(async (req, res) => {
-   const models = await getModels();
+const updateUser = asyncHandler(async (req, res) => {
+   const models = getModels();
   const {User} = models;
   try {
     const { id } = req.params;
@@ -356,8 +356,8 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
 });
 
-export const getDirectoresCarrera = asyncHandler(async(req, res) => {
-   const models = await getModels();
+const getDirectoresCarrera = asyncHandler(async(req, res) => {
+   const models = getModels();
   const {User,Role} = models;
   try{ 
   const directorRole = await Role.findOne({
@@ -392,11 +392,9 @@ export const getDirectoresCarrera = asyncHandler(async(req, res) => {
 
 });
 
-// @desc    Eliminar un usuario (Admin)
-// @route   DELETE /api/users/:id
-// @access  Private/Admin
-export const deleteUserByAdmin = asyncHandler(async (req, res) => {
-   const models = await getModels();
+
+const deleteUserByAdmin = asyncHandler(async (req, res) => {
+   const models = getModels();
   const {User} = models;
   const { id } = req.params;
   const user = await User.findByPk(id);
@@ -415,8 +413,8 @@ export const deleteUserByAdmin = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
 });
 
-export const getComite = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getComite = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { sequelize } = models;
 
   try {
@@ -451,8 +449,8 @@ export const getComite = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
-export const getComiteUser = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getComiteUser = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { sequelize } = models;
 
   try {
@@ -487,7 +485,7 @@ export const getComiteUser = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
-export const getId = asyncHandler(async(req, res)=>{
+ const getId = asyncHandler(async(req, res)=>{
   try {
     const { id } = req.params;
 
@@ -545,8 +543,8 @@ export const getId = asyncHandler(async(req, res)=>{
   }
 });
 
-export const linkTelegramAccount = asyncHandler(async (req, res) => {
-   const models = await getModels();
+const linkTelegramAccount = asyncHandler(async (req, res) => {
+   const models = getModels();
   const {User} = models;
   
   const { email, chat_id } = req.body;
@@ -588,7 +586,7 @@ export const linkTelegramAccount = asyncHandler(async (req, res) => {
   });
 });
 
-export const getProfile = asyncHandler(async (req, res) => {
+ const getProfile = asyncHandler(async (req, res) => {
   
     if (!req.user.idusuario) {
     return res.status(401).json({ message: 'No autorizado: usuario no autenticado' });
@@ -600,7 +598,7 @@ export const getProfile = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: 'Error: usuario autenticado sin ID válido' });
   }
 
-  const models = await getModels();
+  const models = getModels();
   const { User, Facultad } = models; // o 'User', según el nombre real de tu modelo
 
   try {
@@ -637,51 +635,11 @@ export const getProfile = asyncHandler(async (req, res) => {
       error: error.message 
     });
   }
-  /*const idusuario = req.user.idusuario;
-  const models = await getModels();
-  const { sequelize,Usuario } = models;
-  try {
-    const [results] = await sequelize.query(`
-      SELECT 
-        u.idusuario,
-        u.nombre,
-        u.apellidopat,
-        u.apellidomat,
-        u.email,
-        u.role,
-        f.nombre_facultad AS facultad
-      FROM usuario u
-      LEFT JOIN academico a ON u.idusuario = a.idusuario
-      LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
-      WHERE u.idusuario = ?
-    `, {
-      replacements: [idusuario],
-      type: sequelize.QueryTypes.SELECT
-    });
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    const user = results[0];
-
-    res.status(200).json({
-      idusuario: user.idusuario,
-      nombre: user.nombre,
-      apellidopat: user.apellidopat,
-      apellidomat: user.apellidomat,
-      email: user.email,
-      role: user.role,
-      facultad: user.facultad || null // Puede ser null si no es académico o no tiene facultad asignada
-    });
-  } catch (error) {
-    console.error('Error en getProfile:', error);
-    res.status(500).json({ message: 'Error al obtener el perfil del usuario' });
-  }*/
+  
 });
-export const getFacultades = asyncHandler(async(req,res)=>{
+const getFacultades = asyncHandler(async(req,res)=>{
 try{
-  const models = await getModels();
+  const models = getModels();
   const {Facultad} = models;
   const facultad = await Facultad.findAll();
   res.status(200).json(facultad);
@@ -691,4 +649,22 @@ try{
 
 }
 
-})
+});
+module.exports = {
+  createUser,
+  getAllUsers,  
+  getUserById,
+  getUserById1,
+  updateUserRole,
+  updateUser,
+  getDirectoresCarrera,
+  deleteUserByAdmin,
+  getComite,
+  getComiteUser,
+  getId,
+  linkTelegramAccount,
+  getProfile,
+  getFacultades,
+  getCarrera,
+  getUserProfile
+};

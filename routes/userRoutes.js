@@ -1,7 +1,7 @@
-import {Router} from 'express'
-import { protect, authorize, authMiddleware } from '../middleware/authMiddleware.js';
-import express from 'express';
-import {
+const {Router} =require('express');
+const { protect, authorize, authMiddleware } = require('../middleware/authMiddleware.js');
+const express = require('express');
+const {
   getAllUsers,
   getUserById,
   createUser,
@@ -14,7 +14,7 @@ import {
   getUserById1,
   getId,
   
-} from '../controllers/userController.js';
+} = require('../controllers/userController.js');
 const router = express.Router();
 
 router.post('/users', createUser); 
@@ -45,4 +45,4 @@ router.route('/:id')
   .delete(authorize(['admin']), deleteUserByAdmin); // Only 'admin' can delete users
 */
 //router. get('/evento', protectU, authorizeU(['academico','admin']),createEvent)
-export default router;
+module.exports = router;

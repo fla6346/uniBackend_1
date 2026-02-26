@@ -1,7 +1,8 @@
-import asyncHandler from 'express-async-handler';
-import { getModels } from "../models/index.js";
+const asyncHandler = require('express-async-handler');
+const { getModels } = require("../models/index.js");
 
-export const getEstudiantes = asyncHandler(async (req, res) => {
+// ✅ GET ESTUDIANTE POR ID DE USUARIO
+const getEstudiantes = asyncHandler(async (req, res) => {
   const requestedUserId = parseInt(req.params.idusuario, 10);
   if (isNaN(requestedUserId)) {
     return res.status(400).json({ message: 'ID de usuario inválido' });
@@ -17,7 +18,7 @@ export const getEstudiantes = asyncHandler(async (req, res) => {
   }
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
     const estudiante = await Estudiante.findOne({ 
@@ -41,8 +42,7 @@ export const getEstudiantes = asyncHandler(async (req, res) => {
   }
 });
 
-export const getAllEstudiantes = asyncHandler(async (req, res) => {
-  // Solo administradores pueden ver todos los estudiantes
+const getAllEstudiantes = asyncHandler(async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ 
       message: 'Acceso denegado: Solo administradores pueden ver todos los estudiantes' 
@@ -50,12 +50,12 @@ export const getAllEstudiantes = asyncHandler(async (req, res) => {
   }
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
     const estudiantes = await Estudiante.findAll({
       raw: true,
-      order: [['idestudiante', 'ASC']] // Ordenar por ID
+      order: [['idestudiante', 'ASC']]
     });
 
     res.json({
@@ -68,17 +68,14 @@ export const getAllEstudiantes = asyncHandler(async (req, res) => {
   }
 });
 
-// ============================================
-// GET - Obtener estudiante por ID
-// ============================================
-export const getEstudianteById = asyncHandler(async (req, res) => {
+const getEstudianteById = asyncHandler(async (req, res) => {
   const estudianteId = parseInt(req.params.id, 10);
   if (isNaN(estudianteId)) {
     return res.status(400).json({ message: 'ID de estudiante inválido' });
   }
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
     const estudiante = await Estudiante.findByPk(estudianteId, { raw: true });
@@ -89,7 +86,6 @@ export const getEstudianteById = asyncHandler(async (req, res) => {
       });
     }
 
-    // Verificación de autorización (si no es admin, debe ser su propio registro)
     if (req.user.role !== 'admin' && estudiante.idusuario !== req.user.idusuario) {
       return res.status(403).json({ 
         message: 'Acceso denegado: No tienes permisos para ver este recurso' 
@@ -103,10 +99,7 @@ export const getEstudianteById = asyncHandler(async (req, res) => {
   }
 });
 
-// ============================================
-// POST - Crear nuevo estudiante
-// ============================================
-export const createEstudiante = asyncHandler(async (req, res) => {
+const createEstudiante = asyncHandler(async (req, res) => {
   const { 
     idusuario, 
     codigo_estudiante, 
@@ -118,14 +111,12 @@ export const createEstudiante = asyncHandler(async (req, res) => {
     estado 
   } = req.body;
 
-  // Validación de campos requeridos
   if (!idusuario || !codigo_estudiante || !nombre || !apellido_paterno) {
     return res.status(400).json({ 
       message: 'Faltan campos requeridos: idusuario, codigo_estudiante, nombre, apellido_paterno' 
     });
   }
 
-  // Solo administradores pueden crear estudiantes
   if (req.user.role !== 'admin') {
     return res.status(403).json({ 
       message: 'Acceso denegado: Solo administradores pueden crear estudiantes' 
@@ -133,10 +124,9 @@ export const createEstudiante = asyncHandler(async (req, res) => {
   }
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
-    // Verificar si ya existe un estudiante con ese código o idusuario
     const existingByCodigo = await Estudiante.findOne({ 
       where: { codigo_estudiante } 
     });
@@ -157,7 +147,6 @@ export const createEstudiante = asyncHandler(async (req, res) => {
       });
     }
 
-    // Crear nuevo estudiante
     const nuevoEstudiante = await Estudiante.create({
       idusuario,
       codigo_estudiante,
@@ -166,7 +155,7 @@ export const createEstudiante = asyncHandler(async (req, res) => {
       apellido_materno,
       correo_institucional,
       telefono,
-      estado: estado || 'activo' // Valor por defecto
+      estado: estado || 'activo'
     });
 
     res.status(201).json({
@@ -185,10 +174,7 @@ export const createEstudiante = asyncHandler(async (req, res) => {
   }
 });
 
-// ============================================
-// PUT - Actualizar estudiante
-// ============================================
-export const updateEstudiante = asyncHandler(async (req, res) => {
+const updateEstudiante = asyncHandler(async (req, res) => {
   const estudianteId = parseInt(req.params.id, 10);
   if (isNaN(estudianteId)) {
     return res.status(400).json({ message: 'ID de estudiante inválido' });
@@ -206,7 +192,7 @@ export const updateEstudiante = asyncHandler(async (req, res) => {
   } = req.body;
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
     const estudiante = await Estudiante.findByPk(estudianteId);
@@ -217,14 +203,12 @@ export const updateEstudiante = asyncHandler(async (req, res) => {
       });
     }
 
-    // Verificación de autorización
     if (req.user.role !== 'admin' && estudiante.idusuario !== req.user.idusuario) {
       return res.status(403).json({ 
         message: 'Acceso denegado: No tienes permisos para actualizar este recurso' 
       });
     }
 
-    // Si no es admin, no puede cambiar idusuario ni código de estudiante
     if (req.user.role !== 'admin') {
       if (idusuario && idusuario !== estudiante.idusuario) {
         return res.status(403).json({ 
@@ -238,7 +222,6 @@ export const updateEstudiante = asyncHandler(async (req, res) => {
       }
     }
 
-    // Actualizar campos
     await estudiante.update({
       ...(nombre && { nombre }),
       ...(apellido_paterno && { apellido_paterno }),
@@ -266,16 +249,12 @@ export const updateEstudiante = asyncHandler(async (req, res) => {
   }
 });
 
-// ============================================
-// DELETE - Eliminar estudiante (Solo Admin)
-// ============================================
-export const deleteEstudiante = asyncHandler(async (req, res) => {
+const deleteEstudiante = asyncHandler(async (req, res) => {
   const estudianteId = parseInt(req.params.id, 10);
   if (isNaN(estudianteId)) {
     return res.status(400).json({ message: 'ID de estudiante inválido' });
   }
 
-  // Solo administradores pueden eliminar estudiantes
   if (req.user.role !== 'admin') {
     return res.status(403).json({ 
       message: 'Acceso denegado: Solo administradores pueden eliminar estudiantes' 
@@ -283,7 +262,7 @@ export const deleteEstudiante = asyncHandler(async (req, res) => {
   }
 
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Estudiante } = models;
 
     const estudiante = await Estudiante.findByPk(estudianteId);
@@ -304,22 +283,20 @@ export const deleteEstudiante = asyncHandler(async (req, res) => {
     console.error('Error al eliminar estudiante:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
-}
+});
 
-);
-export const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento, User, Academico, Facultad, Estudiante } = models;
   
   try {
-    const { facultad_id } = req.params; // ✅ Recibir ID de facultad desde la URL
+    const { facultad_id } = req.params;
     const facultadId = parseInt(facultad_id, 10);
 
     if (isNaN(facultadId)) {
       return res.status(400).json({ message: 'ID de facultad inválido' });
     }
 
-    // ✅ Buscar eventos aprobados de académicos de esa facultad
     const eventos = await Evento.findAll({
       where: { estado: 'aprobado' },
       distinct: true,
@@ -327,12 +304,12 @@ export const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => 
         model: User,
         as: 'academicoCreador',
         attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
-        required: true, // ✅ INNER JOIN para asegurar que tiene creador
+        required: true,
         include: [{
           model: Academico,
           as: 'academico',
           attributes: ['facultad_id'],
-          where: { facultad_id: facultadId }, // ✅ Filtrar por facultad
+          where: { facultad_id: facultadId },
           required: true,
           include: [{
             model: Facultad,
@@ -344,12 +321,10 @@ export const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => 
       order: [['fechaevento', 'DESC']]
     });
 
-    // ✅ Deduplicar eventos por ID
     const eventosUnicos = Array.from(
       new Map(eventos.map(e => [e.idevento, e])).values()
     );
 
-    // ✅ Formatear respuesta para estudiantes
     const eventosFormateados = eventosUnicos.map(event => {
       const creador = event.academicoCreador;
       const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
@@ -359,13 +334,12 @@ export const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => 
         nombre: event.nombreevento || 'Sin título',
         descripcion: event.descripcion || 'Sin descripción',
         fecha_inicio: event.fechaevento,
-        fecha_fin: event.fechaevento, // Si no tienes fecha_fin, usa la misma
+        fecha_fin: event.fechaevento,
         ubicacion: event.lugarevento || 'Por definir',
-        tipo_evento: 'Evento', // Puedes obtener esto de evento_tipos si lo necesitas
+        tipo_evento: 'Evento',
         categoria: 'General',
         estado: event.estado,
         created_at: event.createdAt,
-        // ✅ Información del organizador
         organizador: creador 
           ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim()
           : 'Sin organizador',
@@ -383,3 +357,12 @@ export const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => 
     });
   }
 });
+module.exports = {
+  getEstudiantes,
+  getAllEstudiantes,
+  getEstudianteById,
+  createEstudiante,
+  updateEstudiante,
+  deleteEstudiante,
+  getEventosPorFacultadEstudiante
+};

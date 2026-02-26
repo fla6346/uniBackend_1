@@ -1,11 +1,10 @@
+const  jwt = require('jsonwebtoken');
+const  {getModels} = require('../models/index.js');
+const  asyncHandler =require('express-async-handler');
+require('dotenv').config();
 
-import jwt from 'jsonwebtoken';
-import {getModels} from '../models/index.js';
-import asyncHandler from 'express-async-handler';
-import 'dotenv/config';
 
-
-export const authMiddleware = (req, res, next) => {
+const authMiddleware = (req, res, next) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
@@ -21,7 +20,7 @@ export const authMiddleware = (req, res, next) => {
   }
 };
 
-export const protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   let token;
 
   try {
@@ -34,7 +33,7 @@ export const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const models = await getModels();
+    const models = getModels();
     const User = models.User;
 
     const user = await User.findByPk(decoded.idusuario); // ✅ Usa 'decoded.id'
@@ -59,8 +58,7 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ error: 'Error de autenticación' });
   }
 };
-
-export const protect1 = asyncHandler(async (req, res, next) => {
+ const protect1 = asyncHandler(async (req, res, next) => {
   console.log('🔐 [Middleware protect] URL:', req.url);
   console.log('   Headers:', req.headers.authorization ? '✅ Token presente' : '❌ Token ausente');
 
@@ -86,7 +84,7 @@ export const protect1 = asyncHandler(async (req, res, next) => {
     console.log('   ✅ Token decodificado:', JSON.stringify(decoded));
 
     // 3. Obtener modelo correcto (USUARIO, no User)
-    const models = await getModels();
+    const models = getModels();
     const { User } = models; // ✅ CORRECTO: Modelo se llama 'Usuario'
 
     if (!User) {
@@ -149,7 +147,7 @@ export const protect1 = asyncHandler(async (req, res, next) => {
     });
   }
 });
-export const authorize = (roles = []) => {
+const authorize = (roles = []) => {
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
       return res.status(403).json({ message: 'Acceso denegado. Rol no definido.' });
@@ -160,4 +158,9 @@ export const authorize = (roles = []) => {
     next();
   };
 };
-
+module.exports = {
+  authMiddleware,
+  protect,
+  protect1,
+  authorize
+};

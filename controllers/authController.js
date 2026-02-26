@@ -1,8 +1,7 @@
 // backend/controllers/authController.js
-import { getModels } from '../models/index.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import 'dotenv/config';
+const { getModels } = require('../models/index.js');
+const bcrypt =require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Función para generar JWT (sin cambios)
 const generateToken = (idusuario) => {
@@ -11,8 +10,8 @@ const generateToken = (idusuario) => {
   });
 };
   
-export const registerUser = async (req, res) => {
- const models = await getModels();
+const registerUser = async (req, res) => {
+ const models = getModels();
   const User = models.User;
   const Academico = models.Academico;
   const Carrera = models.Carrera;
@@ -166,8 +165,8 @@ if (role === 'academico' || role === 'student') {
     res.status(500).json({ message: 'Error del servidor durante el registro.' });
   }
 };
-export const  registerUserStudent = async (req, res) => {
-   const models = await getModels();
+const  registerUserStudent = async (req, res) => {
+   const models =  getModels();
   const User = models.User;
   const Academico = models.Academico;
   const Estudiante = models.Estudiante; 
@@ -199,12 +198,12 @@ export const  registerUserStudent = async (req, res) => {
       return res.status(400).json({ message: 'Por favor, proporciona nombre de usuario, contraseña y correo electrónico.' });
     }
 
-    const userExistsByUserName = await User.findOne({ where: { username } });
+    const userExistsByUserName = User.findOne({ where: { username } });
     if (userExistsByUserName) {
       return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
     }
 
-    const userExistsByEmail = await User.findOne({ where: { email } });
+    const userExistsByEmail = User.findOne({ where: { email } });
     if (userExistsByEmail) {
       return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
     }
@@ -378,8 +377,8 @@ export const  registerUserStudent = async (req, res) => {
   }
 };
 
-export const loginUser = async (req, res) => {
-  const models = await getModels();
+const loginUser = async (req, res) => {
+  const models =  getModels();
   const User = models.User;
 
   console.log('---------------------------------------------------------------');
@@ -438,12 +437,15 @@ export const loginUser = async (req, res) => {
 };
 
 
-// @desc    Obtener datos del usuario actualmente logueado
-// @route   GET /api/auth/me
-// @access  Private (requiere token)
-export const getMe = async (req, res) => {
+const getMe = async (req, res) => {
   if (!req.user) {
     return res.status(404).json({ message: 'Usuario no encontrado o token inválido.' });
   }
   res.status(200).json(req.user);
+};
+module.exports = {
+  registerUser,
+  loginUser,
+  getMe,
+  registerUserStudent
 };

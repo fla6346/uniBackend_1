@@ -1,7 +1,5 @@
-// models/Participante.js
-
-export default (sequelize,DataTypes) => {
-const Subcategoría = sequelize.define('Subcategoria', {
+module.exports = (sequelize,DataTypes) => {
+const Subcategoria = sequelize.define('Subcategoria', {
   idsubcategoria: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -17,5 +15,5 @@ const Subcategoría = sequelize.define('Subcategoria', {
   timestamps: false // O configúralo si tienes columnas createdAt/updatedAt
 });
 
-return Subcategoría;
+return Subcategoria;
 };

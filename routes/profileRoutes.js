@@ -1,10 +1,9 @@
-// routes/profileRoutes.js
-import { Router } from 'express';
-import { protect } from '../middleware/authMiddleware.js';
-import { getProfile } from '../controllers/userController.js';
+const { Router } =require ('express');
+const  { protect } = require('../middleware/authMiddleware.js');
+const { getProfile } = require('../controllers/userController.js');
 
 const router = Router();
 
 router.get('/',protect, getProfile); 
 
-export default router;
+module.exports = router;

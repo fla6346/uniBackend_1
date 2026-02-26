@@ -1,4 +1,6 @@
-export default(sequelize,DataTypes) => {
+const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize,DataTypes) => {
   const Admisiones=sequelize.define('Admisiones',{
        idadmisiones: { 
       type: DataTypes.INTEGER,
@@ -18,7 +20,7 @@ export default(sequelize,DataTypes) => {
     tableName: 'admisiones',
     timestamps: false 
   });
-  Admisiones.associate = function(models){
+  Admisiones.associate = (models) => {
     Admisiones.belongsTo(models.User,{foreignKey:'idusuario'});
   }
   return Admisiones;

@@ -1,5 +1,5 @@
 
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
     const Notificacion = sequelize.define('Notificacion', {
   idnotificacion: {
     type: DataTypes.INTEGER,

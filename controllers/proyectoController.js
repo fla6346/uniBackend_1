@@ -1,6 +1,7 @@
-import { getModels,sequelize } from '../models/index.js';
-import { Op } from 'sequelize';
-import asyncHandler from 'express-async-handler';
+const { getModels } = require('../models/index');
+const { sequelize } = require('../config/db.js');
+const { Op } = require('sequelize');
+const asyncHandler = require('express-async-handler');
 
 
 // --- CONSTANTES ---
@@ -22,10 +23,10 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
   }
 };
 
-export const createEvento = async (req, res) => {
+const createEvento = async (req, res) => {
   const t = await sequelize.transaction();
 try {
-   const models = await getModels(); 
+   const models = getModels(); 
     const { Evento, Objetivo, Resultado, Recurso, User, Comite, Segmento, ObjetivoPDI, ClasificacionEstrategica, Argumentacion,Notificacion } = models;
   
     const admins = await Usuario.findAll({
@@ -267,8 +268,8 @@ for (let i = 0; i < 3; i++) {
   });
 }
 };
-export const getAllEventos = async (req, res) => {
-  const models = await getModels();
+const getAllEventos = async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -283,8 +284,8 @@ export const getAllEventos = async (req, res) => {
   });
   res.status(200).json(eventosConUrl);
 };
-export const fetchAllEvents = async () => {
-  const models = await getModels();
+const fetchAllEvents = async () => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const eventos = await Evento.findAll({
@@ -303,8 +304,8 @@ export const fetchAllEvents = async () => {
   }
 };
 
-export const getEventoById = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getEventoById = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento,Fase,Resultado, User, Comite, Objetivo, ObjetivoPDI, Segmento, Recurso, Actividad, Servicio } = models;
 
   try {
@@ -491,12 +492,12 @@ export const getEventoById = asyncHandler(async (req, res) => {
     });
   }
 });
-export const updateEvento = asyncHandler(async (req, res) => {
+const updateEvento = asyncHandler(async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
     const idevento = parseInt(id, 10);
-     const models = await getModels();
+     const models = getModels();
   const { Evento} = models;
 
 
@@ -622,7 +623,7 @@ export const updateEvento = asyncHandler(async (req, res) => {
 
     if (req.body.nuevaFase) {
       const { nrofase } = req.body.nuevaFase;
-      const models = await getModels();
+      const models = getModels();
       const { Fase } = models;
 
        const [faseRow] = await sequelize.query(
@@ -682,8 +683,8 @@ export const updateEvento = asyncHandler(async (req, res) => {
   
  });
 
-export const deleteEvento = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const deleteEvento = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const evento = await Evento.findByPk(req.params.id);
@@ -703,13 +704,10 @@ export const deleteEvento = asyncHandler(async (req, res) => {
   }
 });
 
-
-
-
-export const aprobarEvento = async (req, res) => {
+const aprobarEvento = async (req, res) => {
   const { id } = req.params;
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Evento } = models;
 
 
@@ -731,10 +729,10 @@ export const aprobarEvento = async (req, res) => {
   }
 };
 
-export const rechazarEvento = async (req, res) => {
+const rechazarEvento = async (req, res) => {
   const { id } = req.params;
   try {
-   const models = await getModels();
+   const models = getModels();
     const { Evento } = models;
 
 
@@ -751,7 +749,7 @@ export const rechazarEvento = async (req, res) => {
     return res.status(500).json({ error: 'Error al rechazar el evento' });
   }
 };
-export const getEventos = asyncHandler(async (req, res) => {
+const getEventos = asyncHandler(async (req, res) => {
   try {
     const eventos = await fetchEventsWithRawQuery();
     res.status(200).json(eventos);
@@ -764,8 +762,8 @@ export const getEventos = asyncHandler(async (req, res) => {
   }
 });
 
-export const fetchEventById = async (id) => {
-  const models = await getModels();
+const fetchEventById = async (id) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     console.log(`[DB] Buscando evento con ID: ${id}`);
@@ -790,8 +788,8 @@ export const fetchEventById = async (id) => {
 };
 
 
-export const getEventosAprobados = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getEventosAprobados = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento, User, Fase } = models;
   try {
     const userId = req.user.idusuario;
@@ -921,8 +919,8 @@ export const getEventosAprobados = asyncHandler(async (req, res) => {
     return res.status(500).json({ error: 'Error al cargar eventos aprobados' });
   }
 });
-export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento, User, Academico, Facultad, Estudiante, Carrera } = models;
   
   try {
@@ -1088,8 +1086,8 @@ export const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
   }
 });
 
-export const getEventosNoAprobados = async (req, res) => {
-  const models = await getModels();
+const getEventosNoAprobados = async (req, res) => {
+  const models = getModels();
   const { Evento, User, Academico, Facultad } = models;
 
   try {
@@ -1197,11 +1195,11 @@ export const getEventosNoAprobados = async (req, res) => {
 };
   
 
-export const getDashboardStats = asyncHandler(async (req, res) => {
+const getDashboardStats = asyncHandler(async (req, res) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Acceso denegado: solo administradores' });
   }
-  const models = await getModels();
+  const models = getModels();
   const { Evento, User } = models;
 
   try {
@@ -1232,13 +1230,13 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error al cargar estadísticas' });
   }
 });
-export const getHistoricalData = asyncHandler(async (req, res) => {
+const getHistoricalData = asyncHandler(async (req, res) => {
   // Verificar que sea admin
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Acceso denegado: solo administradores' });
   }
 
-  const models = await getModels();
+  const models = getModels();
   const { Evento } = models;
 
   try {
@@ -1272,8 +1270,8 @@ export const getHistoricalData = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error al cargar datos históricos' });
   }
 });
-export const getEventoCompletoById = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const getEventoCompletoById = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento, User, Recurso, ClasificacionEstrategica, Subcategoria } = models;
 
   try {
@@ -1340,7 +1338,7 @@ export const getEventoCompletoById = asyncHandler(async (req, res) => {
     });
   }
 });
-export const getEstudianteFacultad = asyncHandler(async (req, res) => {
+const getEstudianteFacultad = asyncHandler(async (req, res) => {
   try {
     const { facultad_id } = req.params;
      const facultadId = parseInt(facultad_id);
@@ -1352,7 +1350,7 @@ export const getEstudianteFacultad = asyncHandler(async (req, res) => {
     
 
 
-    const models = await getModels();
+    const models =  getModels();
     const { Evento, User, Academico } = models;
     
     console.log('📡 Buscando eventos aprobados para facultad_id:', facultadId);
@@ -1410,7 +1408,7 @@ export const getEstudianteFacultad = asyncHandler(async (req, res) => {
     });
   }
 });
-export const getCarreraById = asyncHandler(async (req, res) => {
+const getCarreraById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1420,7 +1418,7 @@ export const getCarreraById = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'ID de carrera inválido' });
     }
 
-    const models = await getModels();
+    const models = getModels();
     const { Carrera } = models;
 
     // Tu tabla se llama 'carrera' y la PK es 'idcarrera'
@@ -1449,7 +1447,7 @@ export const getCarreraById = asyncHandler(async (req, res) => {
   }
 });
 
-export const getFacultadById = asyncHandler(async (req, res) => {
+const getFacultadById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -1459,7 +1457,7 @@ export const getFacultadById = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: 'ID de facultad inválido' });
     }
 
-    const models = await getModels();
+    const models = getModels();
     const { Facultad } = models;
 
     // ⚠️ IMPORTANTE: Tu tabla 'facultad' tiene PK = 'facultad_id'
@@ -1503,9 +1501,9 @@ export const getFacultadById = asyncHandler(async (req, res) => {
     });
   }
 });
-export const diagnosticarModelos = asyncHandler(async (req, res) => {
+const diagnosticarModelos = asyncHandler(async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     
     console.log('\n========== DIAGNÓSTICO DE MODELOS ==========');
     console.log('📋 Modelos disponibles:', Object.keys(models));
@@ -1560,8 +1558,28 @@ export const diagnosticarModelos = asyncHandler(async (req, res) => {
   }
 });
 
-
-
+module.exports ={
+    createEvento,
+    getAllEventos,
+    fetchAllEvents,
+    getEventoById,
+    updateEvento,
+    deleteEvento,
+    aprobarEvento,
+    rechazarEvento,
+    getEventos,
+    fetchEventById,
+    getEventosAprobados,
+    getEventosAprobadosPorFacultad,
+    getEventosNoAprobados,
+    getDashboardStats,
+    getHistoricalData,
+    getEventoCompletoById,
+    getEstudianteFacultad,
+    getCarreraById,
+    getFacultadById,
+    diagnosticarModelos
+}
 
 
 

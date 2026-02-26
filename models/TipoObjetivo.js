@@ -1,5 +1,5 @@
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const TipoObjetivo = sequelize.define('TipoObjetivo', {
     idtipoobjetivo: {
       type: DataTypes.INTEGER,

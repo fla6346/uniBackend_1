@@ -1,4 +1,4 @@
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
 const ObjetivoSegmento = sequelize.define('ObjetivoSegmento', {
   idobjetivo: {
     type: DataTypes.INTEGER,

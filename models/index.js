@@ -1,64 +1,69 @@
-// models/index.js
-import 'dotenv/config';
-import { Sequelize } from 'sequelize';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+const { Sequelize,DataTypes } = require('sequelize');
+require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-const sequelize = new Sequelize(
-  process.env.DB_DATABASE,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'postgres',
-    port: process.env.DB_PORT || 5432,
-    logging: false,
-    pool: { max: 5, min: 0, acquire: 30000, idle: 10000 }
-  }
-);
-
-// 🌐 Variable global para almacenar los modelos una vez inicializados
+let _sequelize;
 let _models = null;
+const getSequelize = () => {
+  if (!_sequelize) {
+    throw new Error('Sequelize not initialized. Call initModels() first.');
+  }
+  return _sequelize;
+};
 
-export const initModels = async () => {
-  if (_models) return _models; // Ya inicializado
+const initModels = async () => {
+  if (_models) return _models;
+
+  _sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
+    {
+      host: process.env.DB_HOST || 'localhost',
+      dialect: 'postgres',
+      logging: process.env.NODE_ENV === 'development' ? console.log : false,
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000
+      }
+    }
+  );
+
+  await _sequelize.authenticate();
+  console.log('✅ PostgreSQL conectado en models/index.js');
 
   const models = {};
 
   const orderedModelFiles = [
-    'Facultad.js',     
+    'Facultad.js',
     'User.js',
-    'Evento.js',      
-    'Objetivo.js',     
-    'Resultado.js',    
-    'Recurso.js',      
-    'EventoTipo.js',   
-    'Comite.js',       
+    'Evento.js',
+    'Objetivo.js',
+    'Resultado.js',
+    'Recurso.js',
+    'EventoTipo.js',
+    'Comite.js',
     'Notificacion.js',
-
     'Administrador.js',
     'Admisiones.js',
     'Daf.js',
     'Externo.js',
     'Ti.js',
     'Recursos.js',
-    'Comunicacion.js',    
+    'Comunicacion.js',
     'Alumno.js',
-    'Estudiante.js',   
+    'Estudiante.js',
     'EventoObjetivo.js',
-    'EventoInscripcion.js',  
+    'EventoInscripcion.js',
     'ResultadoRecurso.js',
     'ClasificacionEstrategica.js',
     'Proyecto.js',
-    'Estudiantes.js',
     'ProyectoEstudiante.js',
     'ObjetivoPDI.js',
-    'Notificacion.js',
-    'Recurso.js',
     'TipoObjetivo.js',
     'Segmento.js',
     'ObjetivoSegmento.js',
@@ -70,70 +75,68 @@ export const initModels = async () => {
     'Fase.js',
     'Actividad.js',
     'Servicio.js',
-    'Croquis.js',
-    'Estudiantes.js'
-
-    
+    'Croquis.js'
   ];
 
-  // Cargar en orden
+  const loadModel = (filename) => {
+    const modelPath = path.join(__dirname, filename);
+    if (!fs.existsSync(modelPath)) return null;
+    
+    // require() en CommonJS - maneja .default si existe
+    const modelDefiner = require(modelPath);
+    const definer = modelDefiner.default || modelDefiner;
+    
+    if (typeof definer === 'function') {
+      const model = definer(_sequelize, Sequelize.DataTypes);
+      if (model && model.name) {
+        return model;
+      }
+    }
+    return null;
+  };
+
   for (const file of orderedModelFiles) {
-    const modelPath = path.join(__dirname, file);
-    if (fs.existsSync(modelPath)) {
-      const modelUrl = new URL(`file://${modelPath}`).href;
-      const modelDefiner = (await import(modelUrl)).default;
-      const model = modelDefiner(sequelize, Sequelize.DataTypes);
+    const model = loadModel(file);
+    if (model) {
       models[model.name] = model;
+      console.log(`✅ Modelo cargado: ${model.name}`);
     }
   }
 
-  // Cargar resto (aunque ya está cubierto)
-  const allModelFiles = fs.readdirSync(__dirname).filter(file => 
-    file !== 'index.js' && file.endsWith('.js') && !orderedModelFiles.includes(file)
-  );
-  
-  for (const file of allModelFiles) {
-    const modelPath = path.join(__dirname, file);
-    const modelUrl = new URL(`file://${modelPath}`).href;
-    const modelDefiner = (await import(modelUrl)).default;
-    const model = modelDefiner(sequelize, Sequelize.DataTypes);
-    models[model.name] = model;
+  const allFiles = fs.readdirSync(__dirname);
+  for (const file of allFiles) {
+    if (file === 'index.js' || !file.endsWith('.js') || orderedModelFiles.includes(file)) {
+      continue;
+    }
+    const model = loadModel(file);
+    if (model && !models[model.name]) {
+      models[model.name] = model;
+      console.log(`✅ Modelo cargado (adicional): ${model.name}`);
+    }
   }
 
-  // 🔗 Asociar modelos
-  //console.log('\n🔗 Iniciando asociaciones...');
-  //console.log('Modelos disponibles:', Object.keys(models));
-  
-  Object.keys(models).forEach(modelName => {
-    console.log(`\n📌 Procesando modelo: ${modelName}`);
-    console.log(`   typeof associate:`, typeof models[modelName].associate);
-    
-    if (typeof models[modelName].associate === 'function') {
-      console.log(`   ✅ Ejecutando ${modelName}.associate()`);
-      models[modelName].associate(models);
-      
-      // Verificar que se crearon
-      const assocs = Object.keys(models[modelName].associations || {});
-      console.log(`   ✅ Asociaciones creadas: ${assocs.join(', ') || 'ninguna'}`);
-    } else {
-      console.log(`   ⚠️ ${modelName} NO tiene método associate`);
+  console.log('\n🔗 Ejecutando asociaciones de modelos...');
+  Object.values(models).forEach(model => {
+    if (model && typeof model.associate === 'function') {
+      model.associate(models);
     }
   });
-  
-  console.log('\n🔗 Asociaciones completadas.\n');
+  console.log('✅ Asociaciones completadas\n');
 
-  models.sequelize = sequelize;
+  models.sequelize = _sequelize;
   _models = models;
-  return models;
+  return { sequelize: _sequelize, models: _models };
 };
 
-// Exporta una función para obtener los modelos (ya inicializados o no)
-export const getModels = async () => {
-  if (!_models) {
-    await initModels();
+const getModels = () => {
+  if (!_models || Object.keys(_models).length === 0) {
+    throw new Error('Models not initialized. Call initModels() first.');
   }
   return _models;
 };
 
-// Exporta sequelize directamente
-export { sequelize };
+module.exports = {
+  sequelize: _sequelize,
+  initModels,
+  getModels
+};

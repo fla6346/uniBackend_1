@@ -1,7 +1,7 @@
 // backend/routes/croquisRoutes.js
-import { Router } from 'express';
-import OpenAI from 'openai';
-import 'dotenv/config';
+const { Router } =require('express');
+const  OpenAI = require('openai');
+require('dotenv/config');
 
 const router = Router();
 
@@ -79,4 +79,4 @@ router.post('/generar-croquis', async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

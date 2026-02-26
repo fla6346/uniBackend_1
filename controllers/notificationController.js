@@ -1,14 +1,11 @@
-import asyncHandler from 'express-async-handler';
-import { getModels } from '../models/index.js'; 
+const  asyncHandler = require ('express-async-handler');
+const { getModels } = require('../models/index.js'); 
 
-/**
- * Endpoint para crear notificaciones masivas.
- * Espera un body con: { title, message, type, idevento, idusuarios[] }
- */
-export const Notification = asyncHandler(async (req, res) => {
+
+const Notification = asyncHandler(async (req, res) => {
    try {
     const userId = req.user.idusuario; 
-    const models = await getModels();
+    const models = getModels();
     const {Notificacion} = models;
     const notificaciones = await Notificacion.findAll({
       where: { idusuario: userId },
@@ -22,9 +19,9 @@ export const Notification = asyncHandler(async (req, res) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
-export const getUserNotifications = async (req, res) => {
+const getUserNotifications = async (req, res) => {
   try {
-    const models = await getModels();
+    const models = getModels();
     const { Notificacion } = models;
 
     const userId = req.user?.idusuario;
@@ -43,7 +40,7 @@ export const getUserNotifications = async (req, res) => {
     res.status(500).json({ error: 'Error al cargar notificaciones' });
   }
 };
-export const read = async(req, res) =>{
+ const read = async(req, res) =>{
    try {
     const { id } = req.params;
     const userId = req.user.idusuario;
@@ -60,8 +57,8 @@ export const read = async(req, res) =>{
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 }
-export const markAsRead = asyncHandler(async (req, res) => {
-  const models = await getModels();
+ const markAsRead = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Notificacion } = models;
 
   const notificationId = req.params.id;
@@ -93,8 +90,8 @@ export const markAsRead = asyncHandler(async (req, res) => {
   }
 });
 
-export const getUnreadCount = asyncHandler(async (req, res) => {
-  const models = await getModels();
+ const getUnreadCount = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Notificacion } = models;
 
   const userId = req.user?.idusuario;
@@ -117,3 +114,10 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+module.exports = {
+  Notification,
+  getUserNotifications,
+  markAsRead,
+  getUnreadCount,
+  read
+};

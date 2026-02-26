@@ -1,15 +1,15 @@
-import express from 'express';
+const express = require('express');
 const router = express.Router();
 
-import {
+const  {
   createEvento,
   getAllEventos,
   getEventoById,
   updateEvento,
   deleteEvento,
-} from '../controllers/eventControllerA.js';
-import {getModels} from '../models/index.js ';
-import { protect, authorize } from '../middleware/authMiddleware.js';
+} = require('../controllers/eventControllerA.js');
+const  {getModels} = require('../models/index.js');
+const { protect, authorize } =require('../middleware/authMiddleware.js');
 
 router.post('/', protect, createEvento);
 router.get('/', getAllEventos);
@@ -17,4 +17,4 @@ router.get('/:id', getEventoById);
 
 router.put('/:id', protect, authorize(['admin']), updateEvento);
 router.delete('/:id', protect, authorize(['admin']), deleteEvento);
-export default router;
+module.exports = router;

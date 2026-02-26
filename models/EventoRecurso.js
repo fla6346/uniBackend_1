@@ -1,4 +1,4 @@
-export default (sequelize,DataTypes) => {
+module.exports = (sequelize,DataTypes) => {
   const EventoRecurso = sequelize.define("EventoRecurso",{
       idevento: {
         type: DataTypes.INTEGER,

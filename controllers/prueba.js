@@ -1,15 +1,10 @@
-import { getModels,sequelize } from '../models/index.js';
-import { Op } from 'sequelize';
-import asyncHandler from 'express-async-handler';
-import {
-  createNotification,
-  getUserNotifications,
-  markAsRead,
-  getUnreadCount
-} from '../controllers/notificationController.js';
-import { createNotificationRecord } from '../controllers/notificationController.js';
+const { getModels, sequelize } = require('../models/index');
+const { Op } = require('sequelize');
+const asyncHandler = require('express-async-handler');
+const { createNotification, getUserNotifications, markAsRead, getUnreadCount, createNotificationRecord } = require('../controllers/notificationController');
+
+// --- FUNCIÓN AUXILIAR ---
 const guardarTiposEvento = async (idevento, tiposEvento, transaction) => {
-  // CORRECCIÓN: La lógica estaba invertida
   if (!tiposEvento || !Array.isArray(tiposEvento)) {
     console.log('No hay tipos de eventos para procesar');
     return;
@@ -53,9 +48,10 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
   }
 };
 
-export const createEvento = async (req, res) => {
+// ✅ FUNCIÓN PRINCIPAL - createEvento (sin 'export')
+const createEvento = async (req, res) => {
   const t = await sequelize.transaction();
-  const models = await getModels();
+  const models = getModels();
   const Evento = models.Evento;
   const Objetivo = models.Objetivo;
   const Resultado = models.Resultado;
@@ -79,15 +75,13 @@ export const createEvento = async (req, res) => {
       idresultado: data.idresultado || null,
       aprobado: false,
       rechazado: false,
-      idacademico: req.user.idusuario,
+      idacademico: req.user?.idusuario,
     }, { transaction: t });
 
     const nuevoEventoId = nuevoEvento.idevento;
-
     await guardarTiposEvento(nuevoEventoId, data.tipos_de_evento, t);
 
     let nuevosObjetivos = [];
-
     if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
       for (const objetivoData of data.objetivos) {
         if (objetivoData.id) {
@@ -103,12 +97,12 @@ export const createEvento = async (req, res) => {
               transaction: t
             }
           );
- 
           nuevosObjetivos.push(objetivo);
         }
       }
     }
 
+    // Objetivos PDI
     let objetivosPDIArray = [];
     if (data.objetivos_pdi) {
       try {
@@ -120,31 +114,24 @@ export const createEvento = async (req, res) => {
 
     if (Array.isArray(objetivosPDIArray) && objetivosPDIArray.length > 0) {
       const descripcionesPDI = objetivosPDIArray.filter(desc => desc && desc.trim() !== '');
-      
       if (descripcionesPDI.length > 0) {
         const objetivoGeneralPDI = await Objetivo.create({
           idtipoobjetivo: OTRO_TIPO_ID,
           texto_personalizado: `PDI - ${descripcionesPDI.length} objetivos`,
         }, { transaction: t });
 
-      
-
         const objetivosPDIACrear = descripcionesPDI.map(descripcion => ({
           idobjetivo: objetivoGeneralPDI.idobjetivo,
           descripcion: descripcion,
         }));
-        
         await ObjetivoPDI.bulkCreate(objetivosPDIACrear, { transaction: t });
       }
     }
 
-    const parsedSegmentos = Array.isArray(data.segmentos_objetivo) 
-      ? data.segmentos_objetivo 
-      : [];
-      
+    // Segmentos
+    const parsedSegmentos = Array.isArray(data.segmentos_objetivo) ? data.segmentos_objetivo : [];
     const segmentosValidos = await Segmento.findAll({ attributes: ['idsegmento'], raw: true });
     const idsSegmentosValidos = new Set(segmentosValidos.map(seg => seg.idsegmento));
-
     const argumentacionSegmento = data.argumentacion_segmento || '';
     const otroSegmentoTexto = parsedSegmentos.find(s => s.texto)?.texto || '';
 
@@ -153,8 +140,6 @@ export const createEvento = async (req, res) => {
         idtipoobjetivo: OTRO_TIPO_ID,
         texto_personalizado: otroSegmentoTexto.trim() || 'Segmentación de Público',
       }, { transaction: t });
-      
-      
       nuevosObjetivos.push(objetivoSegmentacion);
     }
 
@@ -180,7 +165,7 @@ export const createEvento = async (req, res) => {
           }
         );
 
-        if (data.argumentacion && data.argumentacion.trim()) {
+        if (data.argumentacion?.trim()) {
           await sequelize.query(
             'INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)',
             {
@@ -189,11 +174,10 @@ export const createEvento = async (req, res) => {
             }
           );
         }
-        
         nuevosObjetivos.push(objetivoGenerico);
       }
 
-      if (data.argumentacion && data.argumentacion.trim()) {
+      if (data.argumentacion?.trim()) {
         const argumentacionesACrear = nuevosObjetivos.map(objetivo => ({
           idobjetivo: objetivo.idobjetivo,
           texto_argumentacion: data.argumentacion.trim()
@@ -213,7 +197,6 @@ export const createEvento = async (req, res) => {
         for (const segmentoData of segmentosFiltrados) {
           const idSegmento = parseInt(segmentoData.id);
           const textoPersonalizado = segmentoData.texto_personalizado || null;
-
           await sequelize.query(
             'INSERT INTO objetivo_segmento (idobjetivo, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
             {
@@ -225,6 +208,7 @@ export const createEvento = async (req, res) => {
       }
     }
 
+    // Resultados
     let parsedResultados = {};
     if (data.resultados_esperados) {
       try {
@@ -241,6 +225,7 @@ export const createEvento = async (req, res) => {
       otros_resultados: parsedResultados.otro || null,
     }, { transaction: t });
 
+    // Recursos nuevos
     if (data.recursos_nuevos && Array.isArray(data.recursos_nuevos) && data.recursos_nuevos.length > 0) {
       const recursosACrear = data.recursos_nuevos.map(recurso => ({
         idevento: nuevoEventoId,
@@ -248,31 +233,27 @@ export const createEvento = async (req, res) => {
         recurso_tipo: recurso.recurso_tipo || 'Material/Técnico/Tercero',
         habilitado: 1
       }));
-      
       await Recurso.bulkCreate(recursosACrear, { transaction: t });
     }
 
+    // Recursos existentes
     if (data.recursos && Array.isArray(data.recursos) && data.recursos.length > 0) {
       const recursosExistentesACrear = data.recursos.map(recurso => ({
         idevento: nuevoEventoId,
         idrecurso: recurso.idrecurso,
         nombre_recurso: recurso.nombre_recurso,
       }));
-      
       if (recursosExistentesACrear.length > 0) {
         await Recurso.bulkCreate(recursosExistentesACrear, { transaction: t });
       }
     }
 
+    // Comité y notificaciones
     if (Array.isArray(data.comite) && data.comite.length > 0) {
       const usuariosValidos = await User.findAll({
-        where: {
-          idusuario: data.comite,
-          habilitado: '1'
-        },
+        where: { idusuario: data.comite, habilitado: '1' },
         attributes: ['idusuario']
       });
-      
       const idsValidos = usuariosValidos.map(u => u.idusuario);
 
       if (idsValidos.length > 0) {
@@ -281,7 +262,6 @@ export const createEvento = async (req, res) => {
           idusuario,
           created_at: new Date()
         }));
-
         await Comite.bulkCreate(comiteData, { transaction: t });
 
         for (const idusuario of idsValidos) {
@@ -319,10 +299,7 @@ export const createEvento = async (req, res) => {
     });
 
   } catch (error) {
-    if (!t.finished) {
-      await t.rollback();
-    }
-    
+    if (!t.finished) await t.rollback();
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor al crear el evento.',
@@ -331,8 +308,9 @@ export const createEvento = async (req, res) => {
   }
 };
 
-export const getAllEventos = async (req, res) => {
-  const models = await getModels();
+// ✅ OTRAS FUNCIONES SIN 'export'
+const getAllEventos = async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -347,22 +325,18 @@ export const getAllEventos = async (req, res) => {
   });
   res.status(200).json(eventosConUrl);
 };
-export const getid = async(req, res) => {
+
+const getid = async (req, res) => {
   const eventId = req.params.id;
   console.log(`[Backend] ${eventId}`);
+};
 
-}
-export const fetchAllEvents = async () => {
-  const models = await getModels();
+const fetchAllEvents = async () => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const eventos = await Evento.findAll({
-      attributes: [
-        'idevento',
-        'nombreevento',
-        'fechaevento',
-        'horaevento'
-      ],
+      attributes: ['idevento', 'nombreevento', 'fechaevento', 'horaevento'],
       order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
     });
     return eventos;
@@ -371,17 +345,15 @@ export const fetchAllEvents = async () => {
     throw error;
   }
 };
-export const getEventoById = asyncHandler(async (req, res) => {
-  const models = await getModels();
+
+const getEventoById = asyncHandler(async (req, res) => {
+  const models = getModels();
   const { Evento, Comite, User, Resultado } = models;
   
   try {
     const { id } = req.params;
     const eventIdNum = parseInt(id, 10);
-    
-    if (isNaN(eventIdNum)) {
-      return res.status(400).json({ message: 'ID de evento inválido' });
-    }
+    if (isNaN(eventIdNum)) return res.status(400).json({ message: 'ID de evento inválido' });
     
     const evento = await Evento.findByPk(eventIdNum, { 
       include: [
@@ -394,15 +366,12 @@ export const getEventoById = asyncHandler(async (req, res) => {
       ]
     });
 
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
+    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
     let tiposDeEvento = [];
     try {
       const [tiposRaw] = await sequelize.query(
-        `SELECT et.idevento, et.idtipoevento, et.texto_personalizado, 
-                te.nombre_tipo
+        `SELECT et.idevento, et.idtipoevento, et.texto_personalizado, te.nombre_tipo
          FROM evento_tipos et
          LEFT JOIN tipo_evento te ON et.idtipoevento = te.idtipoevento
          WHERE et.idevento = ?`,
@@ -426,15 +395,12 @@ export const getEventoById = asyncHandler(async (req, res) => {
         where: { idevento: eventIdNum },
         attributes: ['idevento', 'idusuario', 'created_at']
       });
-      
       const usuariosIds = comiteRecords.map(c => c.idusuario);
-      
       if (usuariosIds.length > 0) {
         const usuarios = await User.findAll({
           where: { idusuario: usuariosIds },
           attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email', 'role']
         });
-        
         miembrosComite = comiteRecords.map(comite => ({
           ...comite.toJSON(),
           miembroComite: usuarios.find(u => u.idusuario === comite.idusuario)?.toJSON()
@@ -445,26 +411,19 @@ export const getEventoById = asyncHandler(async (req, res) => {
     const eventoConComite = evento.toJSON();
     eventoConComite.Comites = miembrosComite;
     eventoConComite.tiposDeEvento = tiposDeEvento;
-
     res.status(200).json(eventoConComite);
 
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error al obtener evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener evento', error: error.message });
   }
 });
 
-export const updateEvento = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const updateEvento = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const evento = await Evento.findByPk(req.params.id);
-
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
+    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
     const allowedUpdates = [
       'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
@@ -473,59 +432,39 @@ export const updateEvento = asyncHandler(async (req, res) => {
 
     allowedUpdates.forEach(field => {
       if (req.body[field] !== undefined) {
-        if (field.startsWith('id') && field !== 'idobjetivo') {
-          evento[field] = req.body[field] ? parseInt(req.body[field]) : null;
-        } else {
-          evento[field] = req.body[field];
-        }
+        evento[field] = field.startsWith('id') && field !== 'idobjetivo' 
+          ? (req.body[field] ? parseInt(req.body[field]) : null)
+          : req.body[field];
       }
     });
 
     const eventoActualizado = await evento.save();
     res.status(200).json(eventoActualizado);
-
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error al actualizar evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al actualizar evento', error: error.message });
   }
 });
 
-export const deleteEvento = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const deleteEvento = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const evento = await Evento.findByPk(req.params.id);
-
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
-
+    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
     await evento.destroy();
     res.status(200).json({ message: 'Evento eliminado exitosamente' });
-
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error al eliminar evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al eliminar evento', error: error.message });
   }
 });
 
-export const getEventosNoAprobados = asyncHandler(async(req,res)=>{
-  const models = await getModels();
+const getEventosNoAprobados = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const eventos = await Evento.findAndCountAll({
       attributes: { exclude: ['creadorid'] },
-      where: {
-        [Op.or]: [
-          {estado:'pendiente'},
-          {estado: null},
-          {estado:''}
-        ]
-      },
+      where: { [Op.or]: [{ estado: 'pendiente' }, { estado: null }, { estado: '' }] },
       order: [['idevento', 'DESC']],
       limit: req.query.limit ? parseInt(req.query.limit) : 20,
       offset: req.query.offset ? parseInt(req.query.offset) : 0
@@ -556,7 +495,6 @@ export const getEventosNoAprobados = asyncHandler(async(req,res)=>{
       total: eventos.count,
       message: `Se encontraron ${eventos.count} eventos pendientes de aprobación`
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -566,8 +504,8 @@ export const getEventosNoAprobados = asyncHandler(async(req,res)=>{
   }
 });
 
-export const aprobarEvento = async (req, res) => {
-  const models = await getModels();
+const aprobarEvento = async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   const User = models.User;
   const { id } = req.params;
@@ -578,9 +516,7 @@ export const aprobarEvento = async (req, res) => {
     }]
   });
   
-  if (!evento) {
-    return res.status(404).json({ message: 'Evento no encontrado' });
-  }
+  if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
   evento.estado = 'aprobado';
   evento.fecha_aprobacion = new Date();
@@ -603,8 +539,8 @@ export const aprobarEvento = async (req, res) => {
   res.json({ success: true, evento });
 };
 
-export const rechazarEvento = async (req, res) => {
-  const models = await getModels();
+const rechazarEvento = async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   const { id } = req.params;
   const evento = await Evento.findByPk(id);
@@ -615,14 +551,12 @@ export const rechazarEvento = async (req, res) => {
   res.json({ success: true, evento });
 };
 
-export const fetchEventsWithRawQuery = async () => {
+const fetchEventsWithRawQuery = async () => {
   try {
     console.log('[DB-RAW] Buscando eventos con consulta directa...');
-    
     const [eventos] = await sequelize.query(
       "SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento FROM evento ORDER BY fechaevento DESC"
     );
-    
     console.log(`[DB-RAW] Se encontraron ${eventos.length} eventos.`);
     return eventos;
   } catch (error) {
@@ -631,48 +565,36 @@ export const fetchEventsWithRawQuery = async () => {
   }
 };
 
-export const getEventos = asyncHandler(async (req, res) => {
+const getEventos = asyncHandler(async (req, res) => {
   try {
     const eventos = await fetchEventsWithRawQuery();
     res.status(200).json(eventos);
   } catch (error) {
     console.error('Error al obtener eventos con consulta raw:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener eventos',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener eventos', error: error.message });
   }
 });
-export const pendientes = asyncHandler(async(req,res) =>{
-  try{
-    const result = await sequelize.query('SELECT * FROM public.evento ORDER BY idevento ASC ',
-      ['estado']
-    );
-    res.json({evento: result.rows});
 
-  }catch(err){
-    console.error('Error al obtener los pendientes',err);
-    res.status(500).json({message:'Error interno'});
+const pendientes = asyncHandler(async (req, res) => {
+  try {
+    const result = await sequelize.query('SELECT * FROM public.evento ORDER BY idevento ASC');
+    res.json({ evento: result[0] }); // sequelize.query devuelve [rows, metadata]
+  } catch (err) {
+    console.error('Error al obtener los pendientes', err);
+    res.status(500).json({ message: 'Error interno' });
   }
 });
-export const fetchEventById = async (id) => {
-  const models = await getModels();
+
+const fetchEventById = async (id) => {
+  const models =  getModels();
   const Evento = models.Evento;
   try {
     console.log(`[DB] Buscando evento con ID: ${id}`);
-    
     const evento = await Evento.findByPk(id, {
-      attributes: {
-        exclude: ['organizerId', 'categoryId', 'locationId']
-      }
+      attributes: { exclude: ['organizerId', 'categoryId', 'locationId'] }
     });
-
-    if (evento) {
-      console.log(`[DB] Evento encontrado: ${evento.nombreevento}`);
-    } else {
-      console.log(`[DB] No se encontró ningún evento con ID: ${id}`);
-    }
-    
+    if (evento) console.log(`[DB] Evento encontrado: ${evento.nombreevento}`);
+    else console.log(`[DB] No se encontró ningún evento con ID: ${id}`);
     return evento;
   } catch (error) {
     console.error('Error in fetchEventById:', error);
@@ -680,31 +602,24 @@ export const fetchEventById = async (id) => {
   }
 };
 
-export const getEventoByIdA = asyncHandler(async (req, res) => {
+const getEventoByIdA = asyncHandler(async (req, res) => {
   try {
     const evento = await fetchEventById(req.params.id);
-    if (evento) {
-      res.status(200).json(evento);
-    } else {
-      res.status(404).json({ message: 'Evento no encontrado' });
-    }
+    if (evento) res.status(200).json(evento);
+    else res.status(404).json({ message: 'Evento no encontrado' });
   } catch (error) {
     console.error('Error al obtener evento por ID (alternativo):', error);
-    res.status(500).json({ 
-      message: 'Error al obtener evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener evento', error: error.message });
   }
 });
 
-export const getAprobados = asyncHandler(async(req,res)=>{
-   const models = await getModels();
+const getAprobados = asyncHandler(async (req, res) => {
+  const models =  getModels();
   const Evento = models.Evento;
-  const User = models.User;
-   try {
+  try {
     const eventos = await Evento.findAll({
       where: {
-        idusuario: req.user.id,
+        idacademico: req.user?.id,
         estado: 'aprobado'
       }
     });
@@ -712,22 +627,19 @@ export const getAprobados = asyncHandler(async(req,res)=>{
   } catch (error) {
     res.status(500).json({ message: 'Error al cargar eventos' });
   }
-})
+});
 
-
-
-export const debugEventoById = asyncHandler(async (req, res) => {
+const debugEventoById = asyncHandler(async (req, res) => {
   try {
-      const models = await getModels();
-  const Evento = models.Evento;
-  const Resultado = models.Resultado;
-  const Objetivo = models.Objetivo;
-  const Recurso = models.Recurso;
+    const models = getModels();
+    const Evento = models.Evento;
+    const Resultado = models.Resultado;
+    const Objetivo = models.Objetivo;
+    const Recurso = models.Recurso;
+    
     console.log('=== DEBUG INFO ===');
     console.log('Requested ID:', req.params.id);
-    console.log('ID Type:', typeof req.params.id);
     
-    // Primero verificar si el ID es numérico
     const numericId = parseInt(req.params.id);
     if (isNaN(numericId)) {
       console.log('ERROR: ID no es numérico');
@@ -738,138 +650,80 @@ export const debugEventoById = asyncHandler(async (req, res) => {
       });
     }
     
-    console.log('Numeric ID:', numericId);
-    
-    // Verificar si existe en la base de datos
-    console.log('Buscando en base de datos...');
-    
     const evento = await Evento.findByPk(numericId);
-    
     if (!evento) {
-      console.log('Evento no encontrado en base de datos');
-      
-      // Mostrar eventos disponibles para debugging
       const eventosDisponibles = await Evento.findAll({
         attributes: ['idevento', 'nombreevento'],
         limit: 10
       });
-      
       return res.status(404).json({ 
         message: 'Evento no encontrado',
         requestedId: numericId,
-        availableEvents: eventosDisponibles.map(e => ({
-          id: e.idevento,
-          name: e.nombreevento
-        }))
+        availableEvents: eventosDisponibles.map(e => ({ id: e.idevento, name: e.nombreevento }))
       });
     }
     
-    console.log('Evento encontrado:', evento.nombreevento);
-    
-    // Obtener evento con todas las relaciones
     const eventoCompleto = await Evento.findByPk(numericId, {
       include: [
         { model: Resultado, as: 'Resultados' },
-        { 
-          model: Objetivo, 
-          as: 'Objetivos',
-          through: { attributes: ['texto_personalizado_relacion'] }
-        },
+        { model: Objetivo, as: 'Objetivos', through: { attributes: ['texto_personalizado_relacion'] } },
         { model: Recurso, as: 'Recursos' }
       ]
     });
     
-    console.log('Evento completo obtenido');
-    
-    // Agregar URL de imagen si existe
     const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
     const eventoData = eventoCompleto.get({ plain: true });
     eventoData.imagenUrl = eventoData.imagen ? `${baseUrl}${eventoData.imagen}` : null;
     
     console.log('=== DEBUG INFO END ===');
-    
-    res.status(200).json({
-      debug: true,
-      message: 'Evento encontrado exitosamente',
-      data: eventoData
-    });
+    res.status(200).json({ debug: true, message: 'Evento encontrado exitosamente', data: eventoData });
     
   } catch (error) {
     console.error('=== ERROR DEBUG ===');
     console.error('Error completo:', error);
-    console.error('Stack trace:', error.stack);
-    console.error('=== ERROR DEBUG END ===');
-    
-    res.status(500).json({ 
-      message: 'Error al obtener evento',
-      error: error.message,
-      stack: error.stack,
-      debug: true
-    });
+    res.status(500).json({ message: 'Error al obtener evento', error: error.message, stack: error.stack, debug: true });
   }
 });
-export const approveEvent = asyncHandler(async (req, res) => {
-  const models = await getModels();
+
+const approveEvent = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Evento = models.Evento;
   try {
     const evento = await Evento.findByPk(req.params.id);
-
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
+    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
     evento.estado = 'aprobado';
     evento.fecha_aprobacion = new Date();
-    // evento.aprobado_por = req.user.idusuario; // Descomenta cuando tengas el sistema de usuarios
-
     const eventoActualizado = await evento.save();
 
-    res.status(200).json({
-      message: 'Evento aprobado exitosamente',
-      evento: eventoActualizado
-    });
-
+    res.status(200).json({ message: 'Evento aprobado exitosamente', evento: eventoActualizado });
   } catch (error) {
     console.error('Error al aprobar evento:', error);
-    res.status(500).json({ 
-      message: 'Error al aprobar evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al aprobar evento', error: error.message });
   }
 });
-export const getApprovedEvents = asyncHandler(async (req, res) => {
-  const models = await getModels();
+
+const getApprovedEvents = asyncHandler(async (req, res) => {
+  const models =  getModels();
   const Evento = models.Evento;
   try {
     const eventos = await Evento.findAll({
-      attributes: {
-    exclude: ['creadorid']
-      },
-      where: {
-        estado: 'aprobado'
-      },
+      attributes: { exclude: ['creadorid'] },
+      where: { estado: 'aprobado' }
     });
-    
-    console.log('Eventos encontrados:', eventos.length);
-    eventos.forEach(e => console.log('ID:', e.idevento, 'Estado:', JSON.stringify(e.estado)));
-
     res.status(200).json(eventos);
   } catch (error) {
     console.error('Error al obtener eventos aprobados:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener eventos aprobados',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener eventos aprobados', error: error.message });
   }
 });
-export const getPendingEvents = asyncHandler(async (req, res) => {
-  const models = await getModels();
+
+const getPendingEvents = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Event = models.Evento;
   try {
     const eventos = await Event.findAll({
-      where: {
-        estado: 'Pendiente'
-      },
+      where: { estado: 'Pendiente' },
       order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
       include: [
         { model: Resultado, as: 'Resultados' },
@@ -884,60 +738,62 @@ export const getPendingEvents = asyncHandler(async (req, res) => {
       eventoData.imagenUrl = eventoData.imagen ? `${baseUrl}${eventoData.imagen}` : null;
       return eventoData;
     });
-
     res.status(200).json(eventosConUrl);
   } catch (error) {
     console.error('Error al obtener eventos pendientes:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener eventos pendientes',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener eventos pendientes', error: error.message });
   }
 });
 
-export const rejectEvent = asyncHandler(async (req, res) => {
-  const models = await getModels();
+const rejectEvent = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Event = models.Evento;
   try {
     const evento = await Event.findByPk(req.params.id);
-
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
-
-    // Verificar que el usuario tenga permisos de administrador
-    // if (req.user.role !== 'admin' && req.user.role !== 'director') {
-    //   return res.status(403).json({ message: 'No tienes permisos para rechazar eventos' });
-    // }
+    if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
 
     const { razon_rechazo } = req.body;
-
-    // Actualizar el estado del evento
     evento.estado = 'rechazado';
     evento.fecha_rechazo = new Date();
     evento.razon_rechazo = razon_rechazo || 'Sin razón especificada';
-    // evento.rechazado_por = req.user.idusuario; // Descomenta cuando tengas el sistema de usuarios
-
     const eventoActualizado = await evento.save();
 
-
-    res.status(200).json({
-      message: 'Evento rechazado exitosamente',
-      evento: eventoActualizado
-    });
-
+    res.status(200).json({ message: 'Evento rechazado exitosamente', evento: eventoActualizado });
   } catch (error) {
     console.error('Error al rechazar evento:', error);
-    res.status(500).json({ 
-      message: 'Error al rechazar evento',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al rechazar evento', error: error.message });
   }
 });
-export const getEventoById1 = asyncHandler(async(req,res)=>{
-  const models = await getModels();
+
+const getEventoById1 = asyncHandler(async (req, res) => {
+  const models = getModels();
   const Event = models.Evento;
-  const evento = await Event.findAll({
-    attributes:{ exclude:['idevento']},
-  })
-})
+  const evento = await Event.findAll({ attributes: { exclude: ['idevento'] } });
+  res.status(200).json(evento);
+});
+
+// ✅ EXPORTS FINALES - CommonJS
+module.exports = {
+  createEvento,
+  getAllEventos,
+  getid,
+  fetchAllEvents,
+  getEventoById,
+  updateEvento,
+  deleteEvento,
+  getEventosNoAprobados,
+  aprobarEvento,
+  rechazarEvento,
+  fetchEventsWithRawQuery,
+  getEventos,
+  pendientes,
+  fetchEventById,
+  getEventoByIdA,
+  getAprobados,
+  debugEventoById,
+  approveEvent,
+  getApprovedEvents,
+  getPendingEvents,
+  rejectEvent,
+  getEventoById1
+};

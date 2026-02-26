@@ -1,6 +1,7 @@
 // models/Objetivo.js
+const { DataTypes } = require('sequelize');
 
-export default (sequelize, DataTypes) => {
+module.exports = (sequelize, DataTypes) => {
   const Argumentacion = sequelize.define('Argumentacion', {
     idargumentacion: {
       type: DataTypes.INTEGER,
