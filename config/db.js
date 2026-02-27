@@ -1,11 +1,11 @@
 // config/database.js
-const { Sequelize } =require('sequelize');
-const dotenv  = require('dotenv');
+const { Sequelize } = require('sequelize');
+const dotenv = require('dotenv');
 
 // Cargar variables de entorno
 dotenv.config();
 
-// Crear instancia de Sequelize usando las variables de .env
+// Crear instancia de Sequelize
 const sequelize = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
@@ -14,7 +14,16 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: false, 
+    logging: false,
+    
+    // 🔐 AGREGA ESTO: Configuración SSL para Render
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false // Necesario para Render
+      }
+    },
+    
     define: {
       timestamps: false,
       underscored: true 
