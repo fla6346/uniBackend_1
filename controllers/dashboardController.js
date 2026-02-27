@@ -2,7 +2,6 @@ const { getModels } = require('../models/index.js');
 const { Op } = require('sequelize');
 const asyncHandler = require('express-async-handler');
 
-// ✅ GET DASHBOARD STATS
 const getDashboardStats = asyncHandler(async (req, res) => {
   try {
     const models = getModels();
@@ -15,7 +14,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const totalEvents = await Evento.count();
 
     const todosLosEventos = await Evento.findAll({
-      attributes: ['estado', 'createdAt']
+      attributes: ['estado', 'created_at']
     });
 
     const estadoCounts = todosLosEventos.reduce((acc, evento) => {
@@ -29,7 +28,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     primerDiaDelMes.setHours(0, 0, 0, 0);
 
     const eventosAprobadosMes = todosLosEventos.filter(evento => {
-      const fechaEvento = new Date(evento.createdAt);
+      const fechaEvento = new Date(evento.created_at);
       return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
     }).length;
 
@@ -140,14 +139,14 @@ const getMensualStats = asyncHandler(async (req, res) => {
     const result = await Evento.sequelize.query(
       `
         SELECT 
-          TO_CHAR("createdAt", 'YYYY-MM') AS mes,
+          TO_CHAR("created_at", 'YYYY-MM') AS mes,
           COUNT(*)::INTEGER AS totalEvents,
           COUNT(*) FILTER (WHERE "estado" = 'aprobado')::INTEGER AS aprobado,
           COUNT(*) FILTER (WHERE "estado" = 'pendiente')::INTEGER AS pendiente,
           COUNT(*) FILTER (WHERE "estado" = 'rechazado')::INTEGER AS rechazado
         FROM "evento"
-        WHERE "createdAt" IS NOT NULL
-        GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
+        WHERE "created_at" IS NOT NULL
+        GROUP BY TO_CHAR("created_at", 'YYYY-MM')
         ORDER BY mes DESC;
       `,
       { type: Evento.sequelize.QueryTypes.SELECT }
@@ -200,7 +199,7 @@ const getHistoricalData = asyncHandler(async (req, res) => {
 
       const eventos = await Evento.findAll({
         where: {
-          createdAt: { [Op.between]: [start, end] }
+          created_at: { [Op.between]: [start, end] }
         },
         attributes: ['estado']
       });
@@ -272,7 +271,7 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
     primerDiaDelMes.setHours(0, 0, 0, 0);
 
     const eventosAprobadosMes = eventosPorEstado.filter(evento => {
-      const fechaEvento = new Date(evento.createdAt);
+      const fechaEvento = new Date(evento.created_at);
       return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
     }).length;
 
@@ -330,7 +329,7 @@ const getMyHistoricalData = asyncHandler(async (req, res) => {
       const eventos = await Evento.findAll({
         where: {
           idacademico: idsAcademico,
-          createdAt: { [Op.between]: [start, end] }
+          created_at: { [Op.between]: [start, end] }
         },
         attributes: ['estado']
       });
@@ -381,7 +380,7 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     }
 
     const committeeRecords = await sequelize.query(
-      `SELECT idevento, "created_at" as "createdAt" 
+      `SELECT idevento, "created_at" as "created_at" 
        FROM public.comite 
        WHERE idusuario = :idusuario`,
       {
@@ -407,9 +406,9 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
         'descripcion',
         'fechaevento',
         'estado',
-        'createdAt'
+        'created_at'
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['created_at', 'DESC']]
     });
 
 
@@ -417,7 +416,7 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       const assignment = committeeRecords.find(r => r.idevento === event.idevento);
       return {
         ...event.get({ plain: true }),
-        assignedAt: assignment?.createdAt,
+        assignedAt: assignment?.created_at,
         role: 'comité'
       };
     });

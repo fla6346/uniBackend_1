@@ -29,7 +29,8 @@ const initModels = async () => {
         min: 0,
         acquire: 30000,
         idle: 10000
-      }
+      },
+      quoteIdentifiers: false
     }
   );
 

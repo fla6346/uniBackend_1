@@ -69,7 +69,6 @@ const createUser = asyncHandler(async (req, res) => {
       email: newUser.email,
       role: newUser.role,
       habilitado: newUser.habilitado,
-      //createdAt: newUser.createdAt,
     };
     res.status(201).json(userResponse);
   } else {

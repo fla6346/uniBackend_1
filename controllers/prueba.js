@@ -482,7 +482,7 @@ const getEventosNoAprobados = asyncHandler(async (req, res) => {
       status: evento.estado || 'pendiente',
       priority: 'media',
       category: 'General',
-      submittedDate: evento.createdAt || evento.fechaevento,
+      submittedDate: evento.created_at || evento.fechaevento,
       submittedBy: evento.responsable_evento || 'Sistema',
       fechaAprobacion: evento.fecha_aprobacion,
       adminAprobador: evento.admin_aprobador,

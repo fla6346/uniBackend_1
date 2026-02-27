@@ -20,12 +20,14 @@ module.exports = function(sequelize,DataTypes) {
         notEmpty: true
       }
     },
-    createdAt: {
+    created_at: {
       type: DataTypes.DATE,
+      field: 'created_at',
       defaultValue: DataTypes.NOW
     },
-    updatedAt: {
+    updated_at: {
       type: DataTypes.DATE,
+      field: 'updated_at',
       defaultValue: DataTypes.NOW
     }
   }, {

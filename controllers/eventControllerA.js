@@ -266,7 +266,7 @@ const getEventosAprobadosDaf = asyncHandler(async (req, res) => {
       responsable_evento: evento.responsable_evento || 'Sin organizador',
       participantes_esperados: evento.participantes_esperados || 'No especificado',
       estado: evento.estado || 'aprobado',
-      createdAt: evento.createdAt
+      created_at: evento.created_at
     }));
 
     res.status(200).json(eventosTransformados);

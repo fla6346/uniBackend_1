@@ -18,7 +18,7 @@ const Clasificacion = sequelize.define('ClasificacionEstrategica', {
   }
 }, {
   tableName: 'clasificacionEstrategica',
-  timestamps: false // O configúralo si tienes columnas createdAt/updatedAt
+  timestamps: false 
 });
   Clasificacion.associate = (models) => {
 

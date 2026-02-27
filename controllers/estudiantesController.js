@@ -339,7 +339,7 @@ const getEventosPorFacultadEstudiante = asyncHandler(async (req, res) => {
         tipo_evento: 'Evento',
         categoria: 'General',
         estado: event.estado,
-        created_at: event.createdAt,
+        created_at: event.created_at,
         organizador: creador 
           ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim()
           : 'Sin organizador',

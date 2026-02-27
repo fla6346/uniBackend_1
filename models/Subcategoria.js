@@ -12,7 +12,7 @@ const Subcategoria = sequelize.define('Subcategoria', {
   
 }, {
   tableName: 'subcategoria',
-  timestamps: false // O configúralo si tienes columnas createdAt/updatedAt
+  timestamps: false 
 });
 
 return Subcategoria;

@@ -1,9 +1,11 @@
-const  { Router } = require('express');
-const  { getModels } =require('../models/index.js');
-const  { crearLayout,obtenerLayouts } = require('../controllers/layoutsController.js');
-const  { upload } = require('../middleware/upload.js');
+// backend/routes/layoutsRoutes.js
+const express = require('express');
+const router = express.Router();
+const { getModels } = require('../models/index.js');
+const { crearLayout, obtenerLayouts } = require('../controllers/layoutsController.js');
+const  upload  = require('../middleware/upload.js');
 
-const router = Router();
+// Rutas
 router.post('/', upload.single('imagen'), crearLayout);
 router.get('/', obtenerLayouts);
 

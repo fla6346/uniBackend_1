@@ -807,7 +807,7 @@ const getEventosAprobados = asyncHandler(async (req, res) => {
             attributes: ['nombre', 'apellidopat', 'apellidomat']
           }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
     } else if (userRole === 'academico') {
       // Paso 1: Eventos donde soy miembro del comité
@@ -860,7 +860,7 @@ const getEventosAprobados = asyncHandler(async (req, res) => {
           }
         
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
     } else {
       return res.status(403).json({ message: 'Acceso denegado' });
@@ -891,7 +891,7 @@ const getEventosAprobados = asyncHandler(async (req, res) => {
         submittedBy: creador 
           ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
           : 'Sistema',
-        submittedDate: event.createdAt || event.fechaevento,
+        submittedDate: event.created_at || event.fechaevento,
         status: event.estado,
         approvedAt: event.fecha_aprobacion 
           ? new Date(event.fecha_aprobacion).toLocaleString('es-ES') 
@@ -974,7 +974,7 @@ const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
             }]
           }]
         }],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
 
     } else if (userRole === 'academico') {
@@ -1003,7 +1003,7 @@ const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
             }]
           }]
         }],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
 
     } else if (userRole === 'student') {
@@ -1034,7 +1034,7 @@ const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
             }]
           }]
         }],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
     } else {
       return res.status(403).json({ message: 'Acceso denegado' });
@@ -1063,7 +1063,7 @@ const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
         submittedBy: creador
           ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
           : 'Sistema',
-        submittedDate: event.createdAt || event.fechaevento,
+        submittedDate: event.created_at || event.fechaevento,
         approvedAt: event.fecha_aprobacion
           ? new Date(event.fecha_aprobacion).toLocaleString('es-ES')
           : null,
@@ -1117,7 +1117,7 @@ const getEventosNoAprobados = async (req, res) => {
             }]
           }]
         }],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
 
     } else if (userRole === 'academico') {
@@ -1143,7 +1143,7 @@ const getEventosNoAprobados = async (req, res) => {
             }]
           }]
         }],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
       });
     } else {
       return res.status(403).json({ message: 'Acceso denegado' });
@@ -1174,7 +1174,7 @@ const getEventosNoAprobados = async (req, res) => {
         submittedBy: creador 
           ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
           : 'Sistema',
-        submittedDate: event.createdAt || event.fechaevento,
+        submittedDate: event.created_at || event.fechaevento,
         approvedAt: event.fecha_aprobacion,
         approvedBy: event.admin_aprobador,
         additionalComments: event.comentarios_admin,
@@ -1248,10 +1248,9 @@ const getHistoricalData = asyncHandler(async (req, res) => {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthName = monthDate.toLocaleString('es-ES', { month: 'short' });
 
-      // Contar eventos CREADOS en ese mes (usa createdAt, no fechaevento)
       const count = await Evento.count({
         where: {
-          createdAt: {
+          created_at: {
             [Op.gte]: new Date(monthDate.getFullYear(), monthDate.getMonth(), 1),
             [Op.lt]: new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1)
           }

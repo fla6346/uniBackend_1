@@ -1,7 +1,10 @@
-import TelegramBot from 'node-telegram-bot-api';
-import { linkTelegramAccount } from './controllers/userController.js'; 
-import { getAllEventos, getEventoById , fetchAllEvents,fetchEventById, fetchEventsWithRawQuery} from './controllers/evento.js';
-export const startTelegramBot=()=>{
+const TelegramBot = require ('node-telegram-bot-api');
+const { linkTelegramAccount } = require('./controllers/userController.js'); 
+const { getAllEventos, getEventoById,fetchEventById, fetchEventsWithRawQuery} = require('./controllers/evento.js');
+const axios = require('axios');
+
+
+const startTelegramBot=()=>{
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN; 
 const API_BASE_URL = process.env.API_BASE_URL; 
 
@@ -179,3 +182,4 @@ async function getEventoDetails(eventoId) {
 }
 
 }
+module.exports = { startTelegramBot };

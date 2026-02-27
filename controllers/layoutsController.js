@@ -69,7 +69,7 @@ const obtenerLayouts = asyncHandler(async (req, res) => {
 
   const layouts = await Layout.findAll({
     attributes: ['idlayout', 'nombre', 'url_imagen'],
-    order: [['createdAt', 'DESC']]
+    order: [['created_at', 'DESC']]
   });
 
   const layoutsConUrlCompleta = layouts.map(layout => {

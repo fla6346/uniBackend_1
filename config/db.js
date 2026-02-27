@@ -14,10 +14,10 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: false, // Cambia a console.log si quieres ver las queries SQL
+    logging: false, 
     define: {
-      timestamps: false, // Ajusta según tu modelo (si usas createdAt/updatedAt, pon true)
-      underscored: true  // Si tus columnas usan guion bajo (ej: id_usuario)
+      timestamps: false,
+      underscored: true 
     },
     pool: {
       max: 10,
