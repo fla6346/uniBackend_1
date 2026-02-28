@@ -1,7 +1,7 @@
 // server.js
 require('express');
 const express = require('express');
-const sequelize = require('./config/database'); // ← Ajusta la ruta si es necesario
+const sequelize = require('./config/db'); // ← Ajusta la ruta si es necesario
 
 const app = express();
 app.use(express.json());
