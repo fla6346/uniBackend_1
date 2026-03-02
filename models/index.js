@@ -16,24 +16,62 @@ const getSequelize = () => {
 const initModels = async () => {
   if (_models) return _models;
 
-  _sequelize = new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    {
-      host: process.env.DB_HOST || 'localhost',
+  let sequelize;
+ if (process.env.DATABASE_URL) {
+    // Modo producción (Render, Railway, etc.)
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
       dialect: 'postgres',
-      logging: process.env.NODE_ENV === 'development' ? console.log : false,
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false  // evita error de certificado self-signed
+        }
+      },
+      logging: false,  // o console.log si quieres debug
       pool: {
         max: 5,
         min: 0,
         acquire: 30000,
         idle: 10000
       },
-      quoteIdentifiers: false
+      quoteIdentifiers: false,
+      define: {
+        timestamps: false,
+        underscored: true
+      }
+    });
+    console.log('✅ Usando DATABASE_URL para conexión (Render mode)');
+  } else {
+    // Modo desarrollo local
+    if (!process.env.DB_NAME || !process.env.DB_USER || !process.env.DB_PASSWORD) {
+      console.error('❌ Faltan variables DB_NAME, DB_USER o DB_PASSWORD en .env local');
+      process.exit(1);
     }
-  );
 
+    sequelize = new Sequelize(
+      process.env.DB_NAME,
+      process.env.DB_USER,
+      process.env.DB_PASSWORD,
+      {
+        host: process.env.DB_HOST || 'localhost',
+        dialect: 'postgres',
+        logging: process.env.NODE_ENV === 'development' ? console.log : false,
+        pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+        quoteIdentifiers: false,
+        define: { timestamps: false, underscored: true }
+      }
+    );
+    console.log('✅ Conexión local (desarrollo)');
+  }
+
+  try {
+    await sequelize.authenticate();
+    console.log('✅ PostgreSQL conectado correctamente');
+  } catch (error) {
+    console.error('❌ Error al conectar a PostgreSQL:', error.message);
+    process.exit(1);
+  }
+  
   await _sequelize.authenticate();
   console.log('✅ PostgreSQL conectado en models/index.js');
 
