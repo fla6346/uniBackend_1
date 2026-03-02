@@ -1,8 +1,14 @@
 // config/database.js
 const { Sequelize } = require('sequelize');
 
-// 🔐 ÚNICA configuración necesaria para Render
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error('❌ ERROR: DATABASE_URL no está definida en el .env');
+  process.exit(1);
+}
+
+const sequelize = new Sequelize(databaseUrl, {
   dialect: 'postgres',
   dialectOptions: {
     ssl: {
