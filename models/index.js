@@ -42,12 +42,7 @@ const initModels = async () => {
     });
     console.log('✅ Usando DATABASE_URL para conexión (Render mode)');
   } else {
-    // Modo desarrollo local
-    if (!process.env.DB_NAME || !process.env.DB_USER || !process.env.DB_PASSWORD) {
-      console.error('❌ Faltan variables DB_NAME, DB_USER o DB_PASSWORD en .env local');
-      process.exit(1);
-    }
-
+ 
     sequelize = new Sequelize(
       process.env.DB_NAME,
       process.env.DB_USER,
@@ -63,18 +58,16 @@ const initModels = async () => {
     );
     console.log('✅ Conexión local (desarrollo)');
   }
+  _sequelize = sequelize;
 
   try {
-    await sequelize.authenticate();
+    await _sequelize.authenticate();
     console.log('✅ PostgreSQL conectado correctamente');
   } catch (error) {
     console.error('❌ Error al conectar a PostgreSQL:', error.message);
     process.exit(1);
   }
   
-  await _sequelize.authenticate();
-  console.log('✅ PostgreSQL conectado en models/index.js');
-
   const models = {};
 
   const orderedModelFiles = [
