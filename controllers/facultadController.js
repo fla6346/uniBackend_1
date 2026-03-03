@@ -2,7 +2,7 @@ const  {getModels} = require ('../models/index.js');
 
 const getFacultades = async (req, res) => {
   try {
-    const models =  await getModels();
+    const models =  getModels();
     const Facultad = models.Facultad;
     if (!Facultad) {
       return res.status(500).json({ message: 'Modelo Facultad no encontrado.' });
