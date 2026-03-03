@@ -1,9 +1,20 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');           // ← Agrega esta línea
+const cors = require('cors');   
+const { initModels } = require('./models');        // ← Agrega esta línea
 const sequelize = require('./config/db'); // ← Ajusta la ruta si es necesario
 
 const app = express();
+
+(async () => {
+  try {
+    await initModels();
+    console.log('🚀 Modelos y conexión DB inicializados OK');
+  } catch (err) {
+    console.error('❌ Fallo crítico al inicializar modelos/DB:', err.message);
+    process.exit(1);
+  }
+})();
 
 // === Configuración de CORS (¡esto resuelve tu error!) ===
 app.use(cors({
