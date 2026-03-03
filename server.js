@@ -38,10 +38,31 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Tus otras rutas (login, etc.) van aquí...
-// Ejemplo: app.post('/auth/login', tuControladorLogin);
+ app.use('/api/auth', require('./routes/authRoutes.js'));
+    app.use('/api/categories', require('./routes/categoryRoutes.js'));
+    app.use('/api/locations', require('./routes/locationRoutes.js'));
+    app.use('/api/users', require('./routes/userRoutes.js'));
+    app.use('/api/eventos', require('./routes/eventos.js'));
+    app.use('/api/proyectos', require('./routes/proyectosRoutes.js'));
+    app.use('/api/recursos', require('./routes/recursosRoutes.js'));
+    app.use('/api/notificaciones', require('./routes/notificacionesRoutes.js'));
+    app.use('/api/facultades', require('./routes/facultadRoutes.js'));
+    app.use('/api/dashboard', require('./routes/dashboardRoutes.js'));
+    app.use('/api/croquis', require('./routes/croquisRoutes.js'));
+    app.use('/api/profile', require('./routes/profileRoutes.js'));
+    app.use('/api/layouts', require('./routes/layoutsRoutes.js'));
+    app.use('/api/estudiantes', require('./routes/estudiantesRoutes.js'));
 
-// === PUERTO - CRÍTICO PARA RENDER ===
+    // Ruta de salud
+    app.get('/api', (req, res) => {
+      res.json({ message: 'API de Gestión de Eventos Universitarios Funcionando!' });
+    });
+
+    // Error handler
+    app.use((err, req, res, next) => {
+      console.error('❌ Error no manejado:', err.stack);
+      res.status(500).json({ message: 'Error interno del servidor', error: err.message });
+    });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
