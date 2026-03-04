@@ -60,10 +60,12 @@ const getDashboardStats = asyncHandler(async (req, res) => {
           total DESC;
       `);
 
-      eventosPorFacultad = result.reduce((acc, row) => {
-        acc[row.facultad] = parseInt(row.total, 10);
-        return acc;
-      }, {});
+      eventosPorFacultad = result.map((row) => {
+        return {
+          facultad: row.facultad,
+          total: parseInt(row.total, 10)
+        };
+      });
     } catch (queryError) {
       console.warn('Error al cargar eventos por facultad:', queryError.message);
       eventosPorFacultad = {};
