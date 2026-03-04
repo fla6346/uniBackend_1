@@ -307,7 +307,7 @@ const fetchAllEvents = async () => {
 const getEventoById = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Evento,Fase,Resultado, User, Comite, Objetivo, ObjetivoPDI, Segmento, Recurso, Actividad, Servicio } = models;
-
+   const sequelize = Evento.sequelize;
   try {
     const { id } = req.params;
     const eventIdNum = parseInt(id, 10);
