@@ -45,17 +45,14 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     let eventosPorFacultad = {};
     try {
       const [result] = await sequelize.query(`
-       SELECT 
-    f.nombre_facultad as facultad, 
-    u.nombre, 
-    a.idacademico,
-    COUNT(e.idevento) as total_eventos
-FROM academico a
-INNER JOIN usuario u ON u.idusuario = a.idusuario
-INNER JOIN facultad f ON f.facultad_id = a.facultad_id
-LEFT JOIN evento e ON e.idacademico = a.idacademico
-GROUP BY f.nombre_facultad, u.nombre, a.idacademico
-
+      SELECT 
+          f.nombre_facultad as facultad,
+          COUNT(e.idevento) as total
+      FROM facultad f
+      LEFT JOIN academico a ON f.facultad_id = a.facultad_id
+      LEFT JOIN evento e ON a.idacademico = e.idacademico
+      GROUP BY f.facultad_id, f.nombre_facultad
+      ORDER BY total DESC
       `);
 
       eventosPorFacultad = result.map((row) => {
