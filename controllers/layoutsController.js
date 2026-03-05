@@ -25,7 +25,7 @@ const crearLayout = asyncHandler(async (req, res) => {
 
     const nuevoLayout = await Layout.create({
       nombre: nombre.trim(),
-      url_imagen: imagen.filename 
+      url_imagen: `layouts/${imagen.filename}` // guarda: "layouts/imagen-123.jpg"
     });
 
     res.status(201).json({ 
@@ -35,7 +35,7 @@ const crearLayout = asyncHandler(async (req, res) => {
         id: nuevoLayout.idlayout,
         nombre: nuevoLayout.nombre,
         url_imagen: nuevoLayout.url_imagen,
-        imagenUrl: `${req.protocol}://${req.get('host')}/uploads/${imagen.filename}`
+        imagenUrl: `${req.protocol}://${req.get('host')}/uploads/${nuevoLayout.url_imagen}`
       }
     });
 
@@ -45,14 +45,14 @@ const crearLayout = asyncHandler(async (req, res) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ 
         success: false, 
-        message: 'El archivo es demasiado grande (máximo 5MB)' 
+        message: 'El archivo es demasiado grande (máximo 10MB)' 
       });
     }
 
-    if (error.message === 'Solo se permiten imágenes') {
+    if (error.message?.includes('Solo se permiten imágenes')) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Solo se permiten archivos de imagen (jpg, png, etc.)' 
+        message: 'Solo se permiten archivos de imagen (jpg, png, gif, webp)' 
       });
     }
 
@@ -73,12 +73,9 @@ const obtenerLayouts = asyncHandler(async (req, res) => {
   });
 
   const layoutsConUrlCompleta = layouts.map(layout => {
-    const filename = layout.url_imagen.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
-    
-    const imagenUrl = `${req.protocol}://${req.get('host')}/uploads/${filename}`;
-    
-    console.log('Layout:', layout.nombre, 'URL generada:', imagenUrl);
-    
+    // url_imagen ya es "layouts/imagen-123.jpg", no necesita limpieza
+    const imagenUrl = `${req.protocol}://${req.get('host')}/uploads/${layout.url_imagen}`;
+
     return {
       idlayout: layout.idlayout,
       nombre: layout.nombre,
@@ -89,6 +86,7 @@ const obtenerLayouts = asyncHandler(async (req, res) => {
 
   res.json(layoutsConUrlCompleta);
 });
+
 module.exports = {
   crearLayout,
   obtenerLayouts

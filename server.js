@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');   
 const { initModels } = require('./models');        // ← Agrega esta línea
 const sequelize = require('./config/db'); // ← Ajusta la ruta si es necesario
-
+const path = require('path');
 const app = express();
 
 (async () => {
@@ -34,7 +34,7 @@ app.use(cors({
 // app.use(cors());   // permite TODOS los orígenes
 
 app.use(express.json());
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // === Rutas de ejemplo ===
 app.get('/', (req, res) => {
   res.json({ status: 'API funcionando ✅' });
