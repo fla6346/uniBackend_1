@@ -5,7 +5,7 @@ const { initModels } = require('./models');        // ← Agrega esta línea
 const sequelize = require('./config/db'); // ← Ajusta la ruta si es necesario
 const path = require('path');
 const app = express();
-const  {iniciarCronJobs}  = require('./utils/cronJobs.js'); // ← Agrega esta línea
+const  {iniciarCronJobs}  = require('./utils/cronJobs.js'); 
 
 (async () => {
   try {
@@ -48,6 +48,14 @@ app.get('/health', async (req, res) => {
     res.json({ status: 'BD conectada ✅' });
   } catch (error) {
     res.status(500).json({ status: 'BD error ❌', error: error.message });
+  }
+});
+app.post('/api/debug/marcar-vencidos', async (req, res) => {
+  try {
+    await require('./utils/cronJobs').marcarEventosVencidos();
+    res.json({ ok: true, message: 'Cron ejecutado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

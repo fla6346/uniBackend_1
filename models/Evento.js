@@ -87,7 +87,12 @@ module.exports = (sequelize, DataTypes) => {
       field: 'idresultado', 
       references: { model: 'resultado', key: 'idresultado' }
     },
-   
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'updated_at'
+    }
+      
   }, {
     tableName: 'evento',
     timestamps: false
