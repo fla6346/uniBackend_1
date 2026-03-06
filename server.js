@@ -52,10 +52,44 @@ app.get('/health', async (req, res) => {
 });
 app.post('/api/debug/marcar-vencidos', async (req, res) => {
   try {
-    await require('./utils/cronJobs').marcarEventosVencidos();
-    res.json({ ok: true, message: 'Cron ejecutado' });
+    const { getModels } = require('./models');
+    const { Op } = require('sequelize');
+    const { Evento } = getModels();
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Ver qué eventos se van a actualizar
+    const eventosPorVencer = await Evento.findAll({
+      where: {
+        fechaevento: { [Op.lt]: hoy },
+        estado: { [Op.in]: ['aprobado', 'activo'] }
+      },
+      attributes: ['idevento', 'nombreevento', 'fechaevento', 'estado']
+    });
+
+    const [cantidad] = await Evento.update(
+      { estado: 'vencido', updated_at: new Date() },
+      {
+        where: {
+          fechaevento: { [Op.lt]: hoy },
+          estado: { [Op.in]: ['aprobado', 'activo'] }
+        }
+      }
+    );
+
+    res.json({
+      message: `✅ ${cantidad} evento(s) marcado(s) como vencido(s)`,
+      cantidad,
+      eventos: eventosPorVencer,
+      fechaEjecucion: new Date()
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: 'Error al marcar eventos vencidos',
+      message: error.message 
+    });
   }
 });
 
