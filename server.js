@@ -92,7 +92,20 @@ app.post('/api/debug/marcar-vencidos', async (req, res) => {
     });
   }
 });
-
+app.get('/api/debug/db-info', async (req, res) => {
+  const { getModels } = require('./models');
+  const { Evento } = getModels();
+  const sequelize = Evento.sequelize;
+  
+  const result = await sequelize.query('SELECT current_database(), current_setting(\'timezone\')');
+  
+  res.json({
+    database: result[0][0].current_database,
+    timezone: result[0][0].current_setting,
+    currentDate: new Date(),
+    mensaje: 'Verificando conexión a BD'
+  });
+});
  app.use('/api/auth', require('./routes/authRoutes.js'));
     app.use('/api/categories', require('./routes/categoryRoutes.js'));
     app.use('/api/locations', require('./routes/locationRoutes.js'));

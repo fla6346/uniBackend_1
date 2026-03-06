@@ -4,51 +4,56 @@ const { Op } = require('sequelize');
 // const botService = require('../services/botService'); // Si usas bot
 
 const marcarEventosVencidos = async () => {
+  console.log('🔄 [CRON] Iniciando revisión...');
+  
   try {
     const { Evento } = getModels();
     const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0); 
+    hoy.setHours(0, 0, 0, 0);
 
-    const eventosVencidos = await Evento.findAll({
+    console.log('📅 Fecha de hoy:', hoy.toISOString());
+
+    // Buscar eventos
+    const eventosPorVencer = await Evento.findAll({
       where: {
         fechaevento: { [Op.lt]: hoy },
         estado: { [Op.in]: ['aprobado', 'activo'] }
       }
     });
 
-    if (eventosVencidos.length === 0) {
-      console.log('✅ Cron: No hay eventos vencidos para actualizar');
+    console.log(`📋 Encontrados ${eventosPorVencer.length} eventos por vencer`);
+    eventosPorVencer.forEach(e => {
+      console.log(`   - ID:${e.idevento} | ${e.nombreevento} | Fecha:${e.fechaevento} | Estado:${e.estado}`);
+    });
+
+    if (eventosPorVencer.length === 0) {
+      console.log('✅ No hay eventos para actualizar');
       return;
     }
 
-    console.log('🔍 Eventos a vencer:', eventosVencidos.map(e => ({
-      id: e.idevento,
-      nombre: e.nombreevento,
-      fecha: e.fechaevento,
-      estado: e.estado
-    })));
+    // Actualizar
+    console.log('🔄 Ejecutando UPDATE...');
     const [cantidad] = await Evento.update(
-      { 
-        estado: 'vencido',
-        updated_at: new Date()
-      },
+      { estado: 'vencido', updated_at: new Date() },
       {
         where: {
           fechaevento: { [Op.lt]: hoy },
           estado: { [Op.in]: ['aprobado', 'activo'] }
-        },
-        individualHooks: true 
+        }
       }
     );
 
-    console.log(`✅ Cron: ${cantidad} eventos marcados como 'vencido'`);
+    console.log(`✅ UPDATE completado. Filas afectadas: ${cantidad}`);
 
-    // for (const evento of eventosVencidos) {
-    //   await botService.notificarEventoFinalizado(evento);
-    // }
+    // Verificar que se guardó
+    const verificacion = await Evento.count({
+      where: { estado: 'vencido' }
+    });
+    console.log(`🔍 Total eventos 'vencido' en BD: ${verificacion}`);
 
   } catch (error) {
-    console.error('❌ Error marcando eventos vencidos:', error.message);
+    console.error('❌ Error:', error.message);
+    console.error(error.stack);
   }
 };
 
