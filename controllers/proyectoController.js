@@ -1121,40 +1121,47 @@ const getEventosNoAprobados = async (req, res) => {
       });
 
     } else if (userRole === 'academico') {
-      // ✅ Académicos ven SOLO sus propios eventos pendientes
-      eventos = await Evento.findAll({
-        where: { 
-          estado: 'pendiente',
-          idacademico: userId
-        },
-        distinct: true,
-        include: [{
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
-          include: [{
-            model: Academico,
-            as: 'academico',
-            attributes: ['facultad_id'],
-            include: [{
-              model: Facultad,
-              as: 'facultad',
-              attributes: ['nombre_facultad']
-            }]
-          }]
-        }],
-        order: [['created_at', 'DESC']]
+      const academicoLogueado = await Academico.findOne({
+        where: { idusuario: userId },
+        attributes: ['facultad_id']
       });
-    } else {
-      return res.status(403).json({ message: 'Acceso denegado' });
-    }
 
-    // ✅ Deduplicar eventos por ID
+      if (!academicoLogueado) {
+        return res.status(404).json({ message: 'Académico no encontrado' });
+      }
+
+      const facultadId = academicoLogueado.facultad_id;
+
+       eventos = await Evento.findAll({
+    where: { estado: 'pendiente' },
+    distinct: true,
+    include: [{
+      model: User,
+      as: 'academicoCreador',
+      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+      required: true,
+      include: [{
+        model: Academico,
+        as: 'academico',
+        attributes: ['facultad_id'],
+        where: { facultad_id: facultadId }, 
+        required: true,
+        include: [{
+          model: Facultad,
+          as: 'facultad',
+          attributes: ['nombre_facultad']
+        }]
+      }]
+    }],
+    order: [['created_at', 'DESC']]
+  });
+} else {
+  return res.status(403).json({ message: 'Acceso denegado' }); 
+}
     const eventosUnicos = Array.from(
       new Map(eventos.map(e => [e.idevento, e])).values()
     );
 
-    // ✅ Formatear respuesta
     const eventosFormateados = eventosUnicos.map(event => {
       const creador = event.academicoCreador;
       const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
