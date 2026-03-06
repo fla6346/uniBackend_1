@@ -1134,7 +1134,8 @@ const getEventosNoAprobados = async (req, res) => {
 
        eventos = await Evento.findAll({
     where: { estado: 'pendiente' },
-    distinct: true,
+    subQuery: false,
+    //distinct: true,
     include: [{
       model: User,
       as: 'academicoCreador',

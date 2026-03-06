@@ -10,7 +10,6 @@ const  {
   getEventosNoAprobados,
   getEventosAprobados,
   aprobarEvento,rechazarEvento,
-  //pendientes,
   getDashboardStats,
   getHistoricalData,
   getEventosAprobadosPorFacultad,
