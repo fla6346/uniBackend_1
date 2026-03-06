@@ -271,6 +271,7 @@ for (let i = 0; i < 3; i++) {
 const getAllEventos = async (req, res) => {
   const models = getModels();
   const Evento = models.Evento;
+
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
     attributes: { exclude: ['organizerId', 'categoryId', 'locationId'] }
@@ -792,13 +793,18 @@ const getEventosAprobados = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Evento, User, Fase } = models;
   try {
+     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
     const userId = req.user.idusuario;
     const userRole = req.user.role;
     let eventos;
 
     if (userRole === 'admin' || userRole === 'daf') {
       eventos = await Evento.findAll({
-        where: { estado: 'aprobado' },
+        where: { 
+          estado: 'aprobado'
+         },
         attributes:{ include: ['idfase']},
         include: [
           {
@@ -809,6 +815,33 @@ const getEventosAprobados = asyncHandler(async (req, res) => {
         ],
         order: [['created_at', 'DESC']]
       });
+      const activos = [];
+      const vencidos = [];
+      
+
+    eventos.forEach(evento => {
+      const fechaEvento = new Date(evento.fechaevento);
+      fechaEvento.setHours(0, 0, 0, 0);
+      
+      const eventData = evento.get({ plain: true });
+      const baseUrl = `${req.protocol}://${req.get('host')}/uploads/`;
+      eventData.imagenUrl = eventData.imagen ? `${baseUrl}${eventData.imagen}` : null;
+      eventData.esVencido = fechaEvento < hoy;
+
+      if (fechaEvento >= hoy) {
+        activos.push(eventData);
+      } else {
+        vencidos.push(eventData);
+      }
+    });
+
+    res.status(200).json({
+      activos,
+      vencidos,
+      total: eventos.length,
+      fechaConsulta: new Date()
+    });
+
     } else if (userRole === 'academico') {
       // Paso 1: Eventos donde soy miembro del comité
       const eventosEnComite = await sequelize.query(

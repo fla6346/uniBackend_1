@@ -366,6 +366,9 @@ const getAllEventos = async (req, res) => {
      const models = getModels();
   const { Evento } = models;
   try {
+     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
     const eventos = await Evento.findAll({
       /* where: {
         estado: { [Op.ne]: 'inactivo' } // ← excluye inactivos
