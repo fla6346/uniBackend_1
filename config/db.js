@@ -16,7 +16,7 @@ const sequelize = new Sequelize(databaseUrl, {
       rejectUnauthorized: false
     }
   },
-  logging: false,
+  logging: console.log,
   define: {
     timestamps: false,
     underscored: true

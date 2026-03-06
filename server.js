@@ -106,6 +106,35 @@ app.get('/api/debug/db-info', async (req, res) => {
     mensaje: 'Verificando conexión a BD'
   });
 });
+app.get('/api/debug/eventos-por-vencer', async (req, res) => {
+  try {
+    const { getModels } = require('./models');
+    const { Op } = require('sequelize');
+    const { Evento } = getModels();
+    
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const eventos = await Evento.findAll({
+      where: {
+        fechaevento: { [Op.lt]: hoy },
+        estado: { [Op.in]: ['aprobado', 'activo'] }
+      },
+      attributes: ['idevento', 'nombreevento', 'fechaevento', 'estado', 'updated_at']
+    });
+
+    res.json({
+      count: eventos.length,
+      eventos,
+      fechaHoy: hoy,
+      mensaje: eventos.length > 0 
+        ? `Estos ${eventos.length} eventos serán marcados como vencidos` 
+        : 'No hay eventos aprobados con fecha pasada'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
  app.use('/api/auth', require('./routes/authRoutes.js'));
     app.use('/api/categories', require('./routes/categoryRoutes.js'));
     app.use('/api/locations', require('./routes/locationRoutes.js'));
