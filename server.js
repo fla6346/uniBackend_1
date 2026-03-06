@@ -5,12 +5,14 @@ const { initModels } = require('./models');        // ← Agrega esta línea
 const sequelize = require('./config/db'); // ← Ajusta la ruta si es necesario
 const path = require('path');
 const app = express();
+const  {iniciarCronJobs}  = require('./utils/cronJobs.js'); // ← Agrega esta línea
 
 (async () => {
   try {
     await initModels();
     console.log('🚀 Modelos y conexión DB inicializados OK');
-  } catch (err) {
+    iniciarCronJobs(); 
+   } catch (err) {
     console.error('❌ Fallo crítico al inicializar modelos/DB:', err.message);
     process.exit(1);
   }
