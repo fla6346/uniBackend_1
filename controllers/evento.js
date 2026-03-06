@@ -367,9 +367,9 @@ const getAllEventos = async (req, res) => {
   const { Evento } = models;
   try {
     const eventos = await Evento.findAll({
-       where: {
+      /* where: {
         estado: { [Op.ne]: 'inactivo' } // ← excluye inactivos
-      },
+      },*/
       order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
       attributes: { exclude: ['organizerId', 'categoryId', 'locationId'] }
     });
