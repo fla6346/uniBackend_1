@@ -7,7 +7,7 @@ const { get } = require('../routes/eventRoutesNO');
 
 const createUser = asyncHandler(async (req, res) => {
   const models = getModels();
-  const {User} = models;
+  const {User,Academico,Estudiante,Docente} = models;
   const {
     username,
     nombre,
@@ -58,23 +58,56 @@ const createUser = asyncHandler(async (req, res) => {
     habilitado: habilitado !== undefined ? habilitado : true,
   });
 
-  if (newUser) {
-    // Devolver el usuario creado (sin la contraseña)
-    const userResponse = {
-      idusuario: newUser.idusuario, // Asegúrate que este sea el nombre de tu PK
-      username: newUser.username,
-      nombre: newUser.nombre,
-      apellidopat: newUser.apellidopat,
-      apellidomat: newUser.apellidomat,
-      email: newUser.email,
-      role: newUser.role,
-      habilitado: newUser.habilitado,
-    };
-    res.status(201).json(userResponse);
-  } else {
+   if (!newUser) {
     res.status(400);
-    throw new Error('No se pudo crear el usuario, datos inválidos.');
+    throw new Error('No se pudo crear el usuario.');
   }
+
+  // ✅ Crear registro según el rol
+  if (role === 'academico') {
+    if (!idcarrera || !idfacultad) {
+      res.status(400);
+      throw new Error('idcarrera e idfacultad son requeridos para el rol academico.');
+    }
+    await Academico.create({
+      idusuario: newUser.idusuario,
+      idcarrera: idcarrera,
+      facultad_id: idfacultad, // ← aquí se mapea idfacultad → facultad_id del modelo
+    });
+  } else if (role === 'student') {
+    if (!idcarrera) {
+      res.status(400);
+      throw new Error('idcarrera es requerido para el rol student.');
+    }
+    await Estudiante.create({
+      idusuario: newUser.idusuario,
+      idcarrera: idcarrera,
+    });
+  } else if (role === 'docente') {
+    if (!carreras_ids || carreras_ids.length === 0) {
+      res.status(400);
+      throw new Error('carreras_ids es requerido para el rol docente.');
+    }
+    // Si tienes una tabla docente_carrera (relación muchos a muchos)
+    for (const cid of carreras_ids) {
+      await Docente.create({
+        idusuario: newUser.idusuario,
+        idcarrera: cid,
+      });
+    }
+  }
+
+  res.status(201).json({
+    idusuario: newUser.idusuario,
+    username: newUser.username,
+    nombre: newUser.nombre,
+    apellidopat: newUser.apellidopat,
+    apellidomat: newUser.apellidomat,
+    email: newUser.email,
+    role: newUser.role,
+    habilitado: newUser.habilitado,
+  });
+  
 });
 
 const getAllUsers = asyncHandler(async (req, res) => {
