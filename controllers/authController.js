@@ -202,7 +202,7 @@ const  registerUserStudent = async (req, res) => {
       return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
     }
 
-    const userExistsByEmail = User.findOne({ where: { email } });
+    const userExistsByEmail = await User.findOne({ where: { email } });
     if (userExistsByEmail) {
       return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
     }
