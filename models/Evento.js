@@ -33,7 +33,10 @@ module.exports = (sequelize, DataTypes) => {
     estado: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      field: 'estado'
+      field: 'estado',
+      validate: {
+          isIn: [['pendiente', 'aprobado', 'rechazado', 'cancelado', 'vencido', 'completado']]
+  }
     },
     fecha_aprobacion: {
       type: DataTypes.DATE,

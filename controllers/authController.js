@@ -184,7 +184,6 @@ const  registerUserStudent = async (req, res) => {
     habilitado = 1,
     idcarrera,
     idfacultad,
-    // 🔥 AÑADIDO: Aceptar múltiples variaciones del nombre del campo
     carrera_id,
     carreraId,
     facultad_id,
@@ -198,7 +197,7 @@ const  registerUserStudent = async (req, res) => {
       return res.status(400).json({ message: 'Por favor, proporciona nombre de usuario, contraseña y correo electrónico.' });
     }
 
-    const userExistsByUserName = User.findOne({ where: { username } });
+    const userExistsByUserName = await User.findOne({ where: { username } });
     if (userExistsByUserName) {
       return res.status(400).json({ message: 'El nombre de usuario ya está en uso.' });
     }
@@ -208,7 +207,6 @@ const  registerUserStudent = async (req, res) => {
       return res.status(400).json({ message: 'El correo electrónico ya está registrado.' });
     }
 
-    // 🔥 MODIFICADO: Validar carrera y facultad para TANTO academico COMO student
     let validatedCarreraId = null;
     let validatedFacultadId = null;
     
