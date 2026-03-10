@@ -291,6 +291,7 @@ const  registerUserStudent = async (req, res) => {
       apellidomat,
       role: role || 'student',
       habilitado: habilitado || '1',
+      facultad_id: validatedFacultadId, 
     }, {
       returning: true
     });
