@@ -133,7 +133,7 @@ if (role === 'academico' || role === 'student') {
         const academico = await Academico.create({
           idusuario: user.idusuario,
           idcarrera: validatedCarreraId,
-          idfacultad: validatedFacultadId
+          facultad_id: validatedFacultadId
         });
         console.log('Académico creado:', academico.toJSON());
       } catch (academicoError) {
