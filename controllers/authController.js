@@ -338,7 +338,7 @@ const  registerUserStudent = async (req, res) => {
         const estudiante = await Estudiante.create({
           idusuario: user.idusuario,
           idcarrera: validatedCarreraId,
-          idfacultad: validatedFacultadId
+          facultad_id: validatedFacultadId
         });
         console.log('✅ Estudiante creado:', estudiante.toJSON());
       } catch (estudianteError) {
