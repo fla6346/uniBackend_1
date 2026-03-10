@@ -34,9 +34,12 @@ const marcarEventosVencidos = async () => {
     // Actualizar
     console.log('🔄 Ejecutando UPDATE...');
     const [cantidad] = await Evento.update(
-  { estado: 'vencido' },  // ✅ Ahora sí es válido
-  { where: { fechaFin: { [Op.lt]: new Date() }, estado: 'aprobado' } }
-    );
+  { estado: 'vencido' },  
+  { where:  {
+      fechaevento: { [Op.lt]: hoy }, 
+      estado: { [Op.in]: ['aprobado', 'activo'] }  // consistente con el findAll
+  }}
+);
 
     console.log(`✅ UPDATE completado. Filas afectadas: ${cantidad}`);
 
