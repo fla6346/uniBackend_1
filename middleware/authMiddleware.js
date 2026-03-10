@@ -1,6 +1,7 @@
 const  jwt = require('jsonwebtoken');
 const  {getModels} = require('../models/index.js');
 const  asyncHandler =require('express-async-handler');
+const { raw } = require('express');
 require('dotenv').config();
 
 
@@ -36,17 +37,22 @@ const protect = async (req, res, next) => {
     const models = getModels();
     const User = models.User;
 
-    const user = await User.findByPk(decoded.idusuario); // ✅ Usa 'decoded.id'
+    const user = await User.findByPk(decoded.idusuario, { raw: true });
+    
     if (!user) {
       return res.status(401).json({ error: 'Usuario no encontrado' });
     }
 
-    if (user.habilitado !== '1') {
+    if (user.habilitado !== '1' && user.habilitado !== 1 && user.habilitado !== true) {
       return res.status(401).json({ error: 'Usuario deshabilitado' });
     }
 
-    req.user = user;
+    console.log('PROTECT - user.role:', user.role);
+    console.log('PROTECT - habilitado:', user.habilitado);
+
+    req.user = user; 
     next();
+    
   } catch (error) {
     console.error('Error en protect:', error.message);
     if (error.name === 'JsonWebTokenError') {
