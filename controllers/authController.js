@@ -101,7 +101,7 @@ if (role === 'academico' || role === 'student') {
   
   
   validatedCarreraId = cid;
-  validatedFacultadId = fid;
+  validatedFacultadId = carrera.idfacultad;
 }
 
     const user = await User.create({
