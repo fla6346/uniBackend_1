@@ -13,6 +13,7 @@ const {
   getComiteUser,
   getUserById1,
   getId,
+  updateUser
   
 } = require('../controllers/userController.js');
 const router = express.Router();
@@ -28,9 +29,9 @@ router.get('/users', protect, authorize(['admin']), getAllUsers);
 router.get('/',getAllUsers);
 
 router.get('/:id', protect,authorize(['admin']), getUserById);
-router.put('/users/', protect, authorize(['admin']), updateUserRole);
+//router.put('/users/', protect, authorize(['admin']), updateUserRole);
 
-router.put(':id',protect, authorize(['admin']), updateUserRole); // Only 'admin' can update user roles
+router.put(':id',protect, authorize(['admin']), updateUser); // Only 'admin' can update user roles
 router.delete('/users/:id', protect, authorize(['admin']), deleteUserByAdmin);
 //router.get('/users/:id',protect,getUserById);
 

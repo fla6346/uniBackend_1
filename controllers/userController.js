@@ -249,7 +249,7 @@ const getUserById1 = asyncHandler(async (req, res) => {
   res.status(200).json(user);
 });
 
-const updateUserRole = asyncHandler(async (req, res) => {
+/*const updateUserRole = asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
 
@@ -308,13 +308,15 @@ const updateUserRole = asyncHandler(async (req, res) => {
       error: error.message 
     });
   }
-});
+});*/
 const updateUser = asyncHandler(async (req, res) => {
    const models = getModels();
-  const {User} = models;
+  const {User, Academico, Estudiante} = models;
   try {
     const { id } = req.params;
-    const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
+    const { username, nombre,
+       apellidopat, apellidomat, email, role, habilitado, contrasenia,
+      idcarrera, idfacultad } = req.body;
 
     console.log('Backend: Actualizando usuario ID:', id);
     console.log('Backend: Datos recibidos:', req.body);
@@ -326,51 +328,49 @@ const updateUser = asyncHandler(async (req, res) => {
     // Buscar el usuario
     const user = await User.findByPk(id);
 
-    if (!user) {
-      console.log('Backend: Usuario no encontrado con ID:', id);
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    // Verificar si el username o email ya existen (y no son del mismo usuario)
-    if (username && username !== user.username) {
-      const existingUser = await User.findOne({ where: { username } });
-      if (existingUser) {
-        return res.status(409).json({ message: 'El nombre de usuario ya está en uso' });
-      }
-    }
+     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
     if (email && email !== user.email) {
       const existingEmail = await User.findOne({ where: { email } });
-      if (existingEmail) {
-        return res.status(409).json({ message: 'El email ya está en uso' });
-      }
+      if (existingEmail) return res.status(409).json({ message: 'El email ya está en uso' });
     }
 
-    // Actualizar campos
-    if (username) user.username = username;
-    if (nombre) user.nombre = nombre;
-    if (apellidopat) user.apellidopat = apellidopat;
-    if (apellidomat !== undefined) user.apellidomat = apellidomat;
-    if (email) user.email = email;
-    if (role) user.role = role;
-    if (habilitado !== undefined) user.habilitado = habilitado;
+    // Actualizar campos del usuario
+    if (nombre)                    user.nombre = nombre;
+    if (apellidopat)               user.apellidopat = apellidopat;
+    if (apellidomat !== undefined)  user.apellidomat = apellidomat;
+    if (email)                     user.email = email;
+    if (habilitado !== undefined)   user.habilitado = habilitado;
 
-    // Si se proporciona contraseña, hashearla
     if (contrasenia && contrasenia.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
       user.contrasenia = await bcrypt.hash(contrasenia, salt);
     }
 
-    // Guardar cambios
     await user.save();
 
-    console.log('Backend: Usuario actualizado exitosamente');
+    // ✅ Actualizar carrera/facultad según el rol
+    if (idcarrera) {
+      if (user.role === 'academico') {
+        const academico = await Academico.findOne({ where: { idusuario: id } });
+        if (academico) {
+          academico.idcarrera = idcarrera;
+          if (idfacultad) academico.facultad_id = idfacultad;
+          await academico.save();
+        }
+      } else if (user.role === 'student') {
+        const estudiante = await Estudiante.findOne({ where: { idusuario: id } });
+        if (estudiante) {
+          estudiante.idcarrera = idcarrera;
+          await estudiante.save();
+        }
+      }
+    }
 
     res.status(200).json({
       message: 'Usuario actualizado correctamente',
       user: {
         idusuario: user.idusuario,
-        username: user.username,
         nombre: user.nombre,
         apellidopat: user.apellidopat,
         apellidomat: user.apellidomat,
@@ -379,12 +379,10 @@ const updateUser = asyncHandler(async (req, res) => {
         habilitado: user.habilitado
       }
     });
+
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
-    res.status(500).json({ 
-      message: 'Error al actualizar el usuario',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al actualizar el usuario', error: error.message });
   }
 });
 
