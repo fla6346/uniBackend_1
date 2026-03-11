@@ -310,6 +310,10 @@ const getUserById1 = asyncHandler(async (req, res) => {
   }
 });*/
 const updateUser = asyncHandler(async (req, res) => {
+   console.log('🔥 [updateUser] HIT - Petición recibida');
+  console.log('🔥 [updateUser] ID desde params:', req.params.id);
+  console.log('🔥 [updateUser] Body recibido:', JSON.stringify(req.body, null, 2));
+  console.log('🔥 [updateUser] Headers:', req.headers);
    const models = getModels();
   const {User, Academico, Estudiante} = models;
   try {
