@@ -249,144 +249,126 @@ const getUserById1 = asyncHandler(async (req, res) => {
   res.status(200).json(user);
 });
 
-/*const updateUserRole = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
-  const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia } = req.body;
-
-  console.log('Backend: Actualizando usuario ID:', userId);
-  console.log('Backend: Datos recibidos:', req.body);
-
-  try {
-    // Construir query dinámicamente
-    let query = 'UPDATE usuarios SET username = ?, nombre = ?, apellidopat = ?, apellidomat = ?, email = ?, role = ?, habilitado = ?';
-    let params = [username, nombre, apellidopat, apellidomat, email, role, habilitado];
-
-    // Si se proporciona contraseña, incluirla
-    if (contrasenia && contrasenia.trim() !== '') {
-      const bcrypt = require('bcrypt');
-      const hashedPassword = await bcrypt.hash(contrasenia, 10);
-      query += ', contrasenia = ?';
-      params.push(hashedPassword);
-    }
-
-    query += ' WHERE id = ?';
-    params.push(userId);
-
-    db.query(query, params, (error, results) => {
-      if (error) {
-        console.error('Error al actualizar usuario:', error);
-        
-        // Manejar error de duplicado (username o email ya existen)
-        if (error.code === 'ER_DUP_ENTRY') {
-          return res.status(409).json({ 
-            message: 'El nombre de usuario o email ya están en uso' 
-          });
-        }
-        
-        return res.status(500).json({ 
-          message: 'Error al actualizar el usuario',
-          error: error.message 
-        });
-      }
-
-      if (results.affectedRows === 0) {
-        return res.status(404).json({ 
-          message: 'Usuario no encontrado' 
-        });
-      }
-
-      console.log('Backend: Usuario actualizado exitosamente');
-      res.status(200).json({ 
-        message: 'Usuario actualizado correctamente',
-        affectedRows: results.affectedRows
-      });
-    });
-  } catch (error) {
-    console.error('Error al actualizar usuario:', error);
-    res.status(500).json({ 
-      message: 'Error del servidor',
-      error: error.message 
-    });
-  }
-});*/
 const updateUser = asyncHandler(async (req, res) => {
-   console.log('🔥 [updateUser] HIT - Petición recibida');
-  console.log('🔥 [updateUser] ID desde params:', req.params.id);
-  console.log('🔥 [updateUser] Body recibido:', JSON.stringify(req.body, null, 2));
-  console.log('🔥 [updateUser] Headers:', req.headers);
-   const models = getModels();
+  const models = getModels();
   const {User, Academico, Estudiante} = models;
+  
   try {
     const { id } = req.params;
-    const { username, nombre,
-       apellidopat, apellidomat, email, role, habilitado, contrasenia,
-      idcarrera, idfacultad } = req.body;
+    const { username, nombre, apellidopat, apellidomat, email, role, habilitado, contrasenia, idcarrera, idfacultad } = req.body;
 
-    console.log('Backend: Actualizando usuario ID:', id);
-    console.log('Backend: Datos recibidos:', req.body);
+    console.log('🔥 [updateUser] ID:', id);
+    console.log('🔥 [updateUser] idfacultad recibido:', idfacultad);
+    console.log('🔥 [updateUser] idcarrera recibido:', idcarrera);
 
     if (!id) {
       return res.status(400).json({ message: 'ID de usuario requerido' });
     }
 
-    // Buscar el usuario
     const user = await User.findByPk(id);
+    if (!user) {
+      console.error('❌ Usuario no encontrado:', id);
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
 
-     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
-
+    // Verificar email duplicado
     if (email && email !== user.email) {
       const existingEmail = await User.findOne({ where: { email } });
       if (existingEmail) return res.status(409).json({ message: 'El email ya está en uso' });
     }
 
-    // Actualizar campos del usuario
-    if (nombre)                    user.nombre = nombre;
-    if (apellidopat)               user.apellidopat = apellidopat;
-    if (apellidomat !== undefined)  user.apellidomat = apellidomat;
-    if (email)                     user.email = email;
-    if (habilitado !== undefined)   user.habilitado = habilitado;
+    // Actualizar campos básicos
+    if (nombre) user.nombre = nombre;
+    if (apellidopat) user.apellidopat = apellidopat;
+    if (apellidomat !== undefined) user.apellidomat = apellidomat;
+    if (email) user.email = email;
+    if (habilitado !== undefined) user.habilitado = habilitado;
 
+    // Contraseña
     if (contrasenia && contrasenia.trim() !== '') {
       const salt = await bcrypt.genSalt(10);
       user.contrasenia = await bcrypt.hash(contrasenia, salt);
     }
 
-    await user.save();
+    // ✅ ACTUALIZAR facultad_id en tabla usuario (si existe la columna)
+    if (user.role === 'academico' && idfacultad) {
+      console.log('📝 Actualizando usuario.facultad_id a:', idfacultad);
+      user.facultad_id = idfacultad;
+    }
 
-    // ✅ Actualizar carrera/facultad según el rol
-    if (idcarrera) {
-      if (user.role === 'academico') {
-        const academico = await Academico.findOne({ where: { idusuario: id } });
-        if (academico) {
-          academico.idcarrera = idcarrera;
-          if (idfacultad) academico.facultad_id = idfacultad;
-          await academico.save();
+    await user.save();
+    console.log('✅ Usuario guardado correctamente');
+
+    // ✅ ACTUALIZAR/CREAR registro en academico o estudiante
+    if (idcarrera && user.role === 'academico') {
+      console.log('📝 Buscando/creando registro en academico...');
+      
+      let academico = await Academico.findOne({ where: { idusuario: id } });
+      
+      if (academico) {
+        // Actualizar existente
+        console.log('✏️ Actualizando registro existente en academico');
+        academico.idcarrera = idcarrera;
+        
+        // Verificar si la columna existe antes de asignar
+        if (academico.facultad_id !== undefined) {
+          academico.facultad_id = idfacultad;
+          console.log('📝 academico.facultad_id =', idfacultad);
         }
-      } else if (user.role === 'student') {
-        const estudiante = await Estudiante.findOne({ where: { idusuario: id } });
-        if (estudiante) {
-          estudiante.idcarrera = idcarrera;
-          await estudiante.save();
-        }
+        
+        await academico.save();
+        console.log('✅ Academico actualizado:', academico.toJSON());
+      } else {
+        // Crear nuevo
+        console.log('➕ Creando nuevo registro en academico');
+        academico = await Academico.create({
+          idusuario: id,
+          idcarrera: idcarrera,
+          facultad_id: idfacultad || null
+        });
+        console.log('✅ Academico creado:', academico.toJSON());
+      }
+    } else if (idcarrera && user.role === 'student') {
+      console.log('📝 Buscando/creando registro en estudiante...');
+      
+      let estudiante = await Estudiante.findOne({ where: { idusuario: id } });
+      
+      if (estudiante) {
+        estudiante.idcarrera = idcarrera;
+        await estudiante.save();
+        console.log('✅ Estudiante actualizado');
+      } else {
+        estudiante = await Estudiante.create({
+          idusuario: id,
+          idcarrera: idcarrera
+        });
+        console.log('✅ Estudiante creado');
       }
     }
 
+    // Respuesta final
+    const updatedUser = await User.findByPk(id, {
+      attributes: { exclude: ['contrasenia'] }
+    });
+
     res.status(200).json({
       message: 'Usuario actualizado correctamente',
-      user: {
-        idusuario: user.idusuario,
-        nombre: user.nombre,
-        apellidopat: user.apellidopat,
-        apellidomat: user.apellidomat,
-        email: user.email,
-        role: user.role,
-        habilitado: user.habilitado
+      user: updatedUser,
+      debug: {
+        facultad_id_usuario: updatedUser.facultad_id,
+        idcarrera_enviado: idcarrera,
+        idfacultad_enviado: idfacultad
       }
     });
 
   } catch (error) {
-    console.error('Error al actualizar usuario:', error);
-    res.status(500).json({ message: 'Error al actualizar el usuario', error: error.message });
+    console.error('❌ Error en updateUser:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Error al actualizar el usuario', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
