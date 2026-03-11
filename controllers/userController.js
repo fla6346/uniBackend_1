@@ -692,7 +692,6 @@ module.exports = {
   getAllUsers,  
   getUserById,
   getUserById1,
-  updateUserRole,
   updateUser,
   getDirectoresCarrera,
   deleteUserByAdmin,
