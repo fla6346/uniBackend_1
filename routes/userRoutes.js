@@ -5,7 +5,7 @@ const {
   getAllUsers,
   getUserById,
   createUser,
-  updateUserRole,
+  //updateUserRole,
   deleteUserByAdmin,
   linkTelegramAccount,
   getCarrera,
