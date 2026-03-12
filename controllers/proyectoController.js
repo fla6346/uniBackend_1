@@ -1263,7 +1263,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     `SELECT COUNT(*) as total FROM usuario WHERE created_at >= :inicioMes`,
     { replacements: { inicioMes }, type: sequelize.QueryTypes.SELECT }
   );
-  const usuariosNuevosEsteMes = parseInt(resultNuevos.total) || 0;
+ const usuariosNuevosEsteMes = parseInt(resultNuevos.total || resultNuevos.count) || 0;
 
   const estadoMap = {};
   estadoCounts.forEach(e => { estadoMap[e.estado] = parseInt(e.total); });
