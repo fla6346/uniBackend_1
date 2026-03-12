@@ -2,8 +2,10 @@ const  asyncHandler = require('express-async-handler');
 const { getModels } = require ('../models/index.js');
 
 const createRecurso = asyncHandler(async (req, res) => {
+  console.log('📦 Body recibido:', req.body);
   const models = getModels();
   const { Recurso } = models;
+   console.log('📦 Modelo Recurso:', Recurso ? 'OK' : 'NULL');
 
   const { nombre_recurso, recurso_tipo, descripcion, habilitado = 1 } = req.body;
 
