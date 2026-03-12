@@ -503,11 +503,12 @@ const getComiteUser = asyncHandler(async (req, res) => {
         u.apellidomat,
         u.email,
         u.role,
+		u.habilitado,
         f.nombre_facultad AS facultad
       FROM usuario u
       LEFT JOIN academico a ON u.idusuario = a.idusuario
       LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
-      WHERE u.role = 'academico' AND u.habilitado = '1'
+      WHERE u.role = 'academico' AND u.habilitado = 1
       ORDER BY u.nombre, u.apellidopat
     `);
 
