@@ -465,9 +465,10 @@ const getComite = asyncHandler(async (req, res) => {
       LEFT JOIN academico a ON u.idusuario = a.idusuario
       LEFT JOIN facultad f ON a.facultad_id = f.facultad_id
       WHERE u.role = 'academico' 
-        AND (u.habilitado = true OR u.habilitado = '1' OR u.habilitado = 1)
+        AND u.habilitado::text = '1'
       ORDER BY u.nombre, u.apellidopat
     `);
+
 
     console.log('✅ Usuarios encontrados:', results.length);
 
