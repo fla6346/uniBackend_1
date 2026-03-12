@@ -1243,7 +1243,8 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   const ahora = new Date();
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 
-  const [activeUsers, totalEvents, usuariosNuevosEsteMes, estadoCounts] = await Promise.all([
+
+  const [activeUsers, totalEvents, estadoCounts] = await Promise.all([
     User.count({ where: { habilitado: '1' } }),
     Evento.count(),
     User.count({
@@ -1257,6 +1258,12 @@ const getDashboardStats = asyncHandler(async (req, res) => {
       raw: true
     })
   ]);
+
+  const [resultNuevos] = await sequelize.query(
+    `SELECT COUNT(*) as total FROM usuario WHERE created_at >= :inicioMes`,
+    { replacements: { inicioMes }, type: sequelize.QueryTypes.SELECT }
+  );
+  const usuariosNuevosEsteMes = parseInt(resultNuevos.total) || 0;
 
   const estadoMap = {};
   estadoCounts.forEach(e => { estadoMap[e.estado] = parseInt(e.total); });

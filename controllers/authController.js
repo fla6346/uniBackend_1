@@ -114,6 +114,7 @@ if (role === 'academico' || role === 'student') {
       role: role || 'student',
       habilitado: habilitado || '1',
       facultad_id: validatedFacultadId,
+      created_at: new Date(),
     },{
       returning: true
     });
