@@ -301,10 +301,11 @@ const updateUser = asyncHandler(async (req, res) => {
       console.log('📝 Actualizando habilitado a:', valorHabilitado);
       user.habilitado = valorHabilitado;
     }
-    
+
     if (contrasenia && contrasenia.trim() !== '') {
-      const salt = await bcrypt.genSalt(10);
-      user.contrasenia = await bcrypt.hash(contrasenia, salt);
+      //const salt = await bcrypt.genSalt(10);
+      user.contrasenia =contrasenia.trim();
+      // await bcrypt.hash(contrasenia, salt);
     }
 
     // ✅ ACTUALIZAR facultad_id en tabla usuario (si existe la columna)
