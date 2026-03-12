@@ -85,7 +85,6 @@ const initModels = async () => {
     'Daf.js',
     'Externo.js',
     'Ti.js',
-    'Recursos.js',
     'Comunicacion.js',
     'Alumno.js',
     'Estudiante.js',
