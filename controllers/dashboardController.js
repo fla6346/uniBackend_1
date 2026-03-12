@@ -13,6 +13,16 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 
     const totalEvents = await Evento.count();
 
+       const ahora = new Date();
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    const resultadoNuevos = await sequelize.query(
+      `SELECT COUNT(*) as total FROM usuario WHERE created_at >= :inicioMes`,
+      { replacements: { inicioMes }, type: sequelize.QueryTypes.SELECT }
+    );
+    const usuariosNuevosEsteMes = parseInt(
+      resultadoNuevos[0]?.total || resultadoNuevos[0]?.count || 0
+    );
+
     const todosLosEventos = await Evento.findAll({
       attributes: ['estado', 'created_at']
     });
@@ -108,6 +118,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const stats = {
       activeUsers,
       totalEvents,
+      usuariosNuevosEsteMes,
       estadoCounts,
       eventosAprobadosMes,
       tasaAprobacion,
