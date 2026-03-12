@@ -1237,39 +1237,42 @@ const getEventosNoAprobados = async (req, res) => {
   
 
 const getDashboardStats = asyncHandler(async (req, res) => {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Acceso denegado: solo administradores' });
-  }
   const models = getModels();
   const { Evento, User } = models;
 
-  try {
-    // Usuarios activos
-    const activeUsers = await User.count({
-      where: { habilitado: '1' }
-    });
+  const ahora = new Date();
+  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 
-    // Eventos totales
-    const totalEvents = await Evento.count();
+  const [activeUsers, totalEvents, usuariosNuevosEsteMes, estadoCounts] = await Promise.all([
+    User.count({ where: { habilitado: '1' } }),
+    Evento.count(),
+    User.count({
+      where: {
+        created_at: { [Op.gte]: inicioMes }
+      }
+    }),
+    Evento.findAll({
+      attributes: ['estado', [sequelize.fn('COUNT', sequelize.col('estado')), 'total']],
+      group: ['estado'],
+      raw: true
+    })
+  ]);
 
-    // Contenidos pendientes
-    const pendingContent = await Evento.count({
-      where: { estado: 'pendiente' }
-    });
+  const estadoMap = {};
+  estadoCounts.forEach(e => { estadoMap[e.estado] = parseInt(e.total); });
 
-    // Estabilidad del sistema (simulación)
-    const systemStability = 98;
+  const aprobados = estadoMap['aprobado'] || 0;
+  const tasaAprobacion = totalEvents > 0 ? Math.round((aprobados / totalEvents) * 100) : 0;
 
-    res.status(200).json({
-      activeUsers,
-      totalEvents,
-      pendingContent,
-      systemStability
-    });
-  } catch (error) {
-    console.error('Error en getDashboardStats:', error);
-    res.status(500).json({ message: 'Error al cargar estadísticas' });
-  }
+  res.status(200).json({
+    activeUsers,
+    totalEvents,
+    usuariosNuevosEsteMes,
+    estadoCounts: estadoMap,
+    tasaAprobacion,
+    systemStability: 98,
+    tiempoPromedioAprobacion: 0,
+  });
 });
 const getHistoricalData = asyncHandler(async (req, res) => {
   // Verificar que sea admin
