@@ -160,6 +160,10 @@ app.get('/api/debug/eventos-por-vencer', async (req, res) => {
       console.error('❌ Error no manejado:', err.stack);
       res.status(500).json({ message: 'Error interno del servidor', error: err.message });
     });
+    // En tu Express.js
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
