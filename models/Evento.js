@@ -10,12 +10,12 @@ module.exports = (sequelize, DataTypes) => {
       field: 'idevento'
     },
     nombreevento: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(255),
       allowNull: false,
       field: 'nombreevento'
     },
     lugarevento: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.STRING(255),
       allowNull: true,
       field: 'lugarevento'
     },
@@ -29,73 +29,94 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       field: 'horaevento'
     },
-   
     estado: {
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'estado',
       validate: {
-          isIn: [['pendiente', 'aprobado', 'rechazado', 'cancelado', 'vencido', 'completado']]
-  }
+        isIn: [['pendiente', 'aprobado', 'rechazado', 'cancelado', 'vencido', 'completado']]
+      }
+    },
+    argumentacion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'argumentacion'
+    },
+    descripcion: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'descripcion'
     },
     fecha_aprobacion: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_aprobacion' // ✅ Agregado field
+      field: 'fecha_aprobacion'
     },
     admin_aprobador: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      field: 'admin_aprobador' // ✅ Agregado field
+      field: 'admin_aprobador'
     },
     comentarios_admin: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
-      field: 'comentarios_admin' // ✅ Agregado field
+      field: 'comentarios_admin'
     },
     fecha_rechazo: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_rechazo' // ✅ Agregado field
+      field: 'fecha_rechazo'
     },
     razon_rechazo: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
-      field: 'razon_rechazo' // ✅ Agregado field
-    },
-    descripcion: {
-      type: DataTypes.STRING,
-      field: 'descripcion' // ✅ Agregado field
+      field: 'razon_rechazo'
     },
     idadministrador: {
-      type: DataTypes.INTEGER, // ✅ Cambiado a INTEGER
+      type: DataTypes.INTEGER,
       allowNull: true,
-      field: 'idadministrador', // ✅ Agregado field
-      references: { model: 'usuario', key: 'idusuario' } // ✅ Corregido nombre de tabla
+      field: 'idadministrador'
     },
     idacademico: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      //references: { model: 'usuario', key: 'idusuario' }
+      field: 'idacademico'
     },
     idclasificacion: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-      field: 'idclasificacion', 
-      references: { model: 'subcategoria', key: 'idsubcategoria' }
+      allowNull: true,  // ← era false, causaba error si no se enviaba
+      field: 'idclasificacion'
+    },
+    idsubcategoria: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'idsubcategoria'
     },
     idresultado: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      field: 'idresultado', 
-      references: { model: 'resultado', key: 'idresultado' }
+      field: 'idresultado'
+    },
+    idfase: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'idfase'
+    },
+    idlayout: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'idlayout'
+    },
+    responsable_evento: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'responsable_evento'
     },
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'updated_at'
     }
-      
   }, {
     tableName: 'evento',
     timestamps: false
@@ -106,17 +127,16 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'idclasificacion',
       as: 'clasificacion'
     });
-  
     Evento.belongsTo(models.User, {
       foreignKey: 'idacademico',
       as: 'academicoCreador'
     });
-     Evento.belongsToMany(models.User, {
-    through: models.Comite,
-    foreignKey: 'idevento',
-    otherKey: 'idusuario',
-    as: 'comite',
-  });
+    Evento.belongsToMany(models.User, {
+      through: models.Comite,
+      foreignKey: 'idevento',
+      otherKey: 'idusuario',
+      as: 'comite',
+    });
     Evento.belongsToMany(models.Recurso, {
       through: 'evento_recurso',
       foreignKey: 'idevento',
@@ -128,8 +148,6 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'idevento',
       as: 'Resultados'
     });
- 
-    
     Evento.belongsToMany(models.Objetivo, {
       through: models.EventoObjetivo,
       foreignKey: 'idevento',
@@ -142,20 +160,20 @@ module.exports = (sequelize, DataTypes) => {
       otherKey: 'idestudiante',
       as: 'Estudiantes'
     });
-Evento.belongsToMany(models.TiposDeEvento, { 
-  through: models.EventoTipo,             
-  foreignKey: 'idevento',
-  otherKey: 'idtipoevento',
-  as: 'tiposDeEvento'
-});
-Evento.belongsTo(models.Fase, {
-  foreignKey: 'idfase', 
-  as: 'fase',           
-});
-  Evento.belongsTo(models.Layout, {
-  foreignKey: 'idlayout',
-  as: 'Layout'
-});
+    Evento.belongsToMany(models.TiposDeEvento, {
+      through: models.EventoTipo,
+      foreignKey: 'idevento',
+      otherKey: 'idtipoevento',
+      as: 'tiposDeEvento'
+    });
+    Evento.belongsTo(models.Fase, {
+      foreignKey: 'idfase',
+      as: 'fases'
+    });
+    Evento.belongsTo(models.Layout, {
+      foreignKey: 'idlayout',
+      as: 'Layout'
+    });
   };
 
   return Evento;
