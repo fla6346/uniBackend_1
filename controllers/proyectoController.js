@@ -304,11 +304,9 @@ const createEvento = async (req, res) => {
       lugarevento: data.lugarevento || 'Por definir',
       fechaevento: data.fechaevento,
       horaevento: data.horaevento,
-      responsable_evento: responsableCompleto,
       idacademico: req.user.idusuario,
       idclasificacion: data.idclasificacion || null,
       idsubcategoria: data.idsubcategoria || null,
-      argumentacion: data.argumentacion || null,
     }, { transaction: t });
 
     const nuevoEventoId = nuevoEvento.idevento;

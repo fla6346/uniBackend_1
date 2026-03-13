@@ -37,11 +37,7 @@ module.exports = (sequelize, DataTypes) => {
         isIn: [['pendiente', 'aprobado', 'rechazado', 'cancelado', 'vencido', 'completado']]
       }
     },
-    argumentacion: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      field: 'argumentacion'
-    },
+  
     descripcion: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -107,11 +103,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       field: 'idlayout'
     },
-    responsable_evento: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-      field: 'responsable_evento'
-    },
+   
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
