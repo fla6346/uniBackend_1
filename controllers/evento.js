@@ -291,7 +291,48 @@ const createEvento = async (req, res) => {
         await Recurso.bulkCreate(recursosACrear, { transaction: t });
       }
     }
+    if (data.presupuesto) {
+  const { Presupuesto, Egreso, Ingreso } = models;
 
+  const presupuesto = await Presupuesto.create({
+    idevento: nuevoEventoId,
+    total_egresos: data.presupuesto.total_egresos || 0,
+    total_ingresos: data.presupuesto.total_ingresos || 0,
+    balance: data.presupuesto.balance || 0,
+  }, { transaction: t });
+
+  // Egresos
+  const egresosValidos = (data.presupuesto.egresos || [])
+    .filter(e => e.descripcion?.trim());
+  if (egresosValidos.length > 0) {
+    await Egreso.bulkCreate(
+      egresosValidos.map(e => ({
+        idpresupuesto: presupuesto.idpresupuesto,
+        descripcion: e.descripcion,
+        cantidad: parseFloat(e.cantidad) || 0,
+        precio_unitario: parseFloat(e.precio_unitario) || 0,
+        total: parseFloat(e.total) || 0,
+      })),
+      { transaction: t }
+    );
+  }
+
+  // Ingresos
+  const ingresosValidos = (data.presupuesto.ingresos || [])
+    .filter(i => i.descripcion?.trim());
+  if (ingresosValidos.length > 0) {
+    await Ingreso.bulkCreate(
+      ingresosValidos.map(i => ({
+        idpresupuesto: presupuesto.idpresupuesto,
+        descripcion: i.descripcion,
+        cantidad: parseFloat(i.cantidad) || 0,
+        precio_unitario: parseFloat(i.precio_unitario) || 0,
+        total: parseFloat(i.total) || 0,
+      })),
+      { transaction: t }
+    );
+  }
+}
     // 8. NOTIFICACIONES AL COMITÉ
     try {
       const { UserComite } = await getModels();

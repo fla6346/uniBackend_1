@@ -106,7 +106,10 @@ const initModels = async () => {
     'Fase.js',
     'Actividad.js',
     'Servicio.js',
-    'Croquis.js'
+    'Croquis.js',
+    'Presupuesto.js',
+    'Ingreso.js',
+    'Egreso.js'
   ];
 
   const loadModel = (filename) => {
