@@ -34,6 +34,17 @@ const createRecurso = asyncHandler(async (req, res) => {
     }
   });
 });
+const getRecursos = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Recurso } = models;
+
+  const recursos = await Recurso.findAll({
+    where: { habilitado: 1 },
+    attributes: ['idrecurso', 'nombre_recurso', 'recurso_tipo', 'descripcion']
+  });
+  res.json({ recursos });
+})
 module.exports = {
-  createRecurso
+  createRecurso,
+  getRecursos
 };
