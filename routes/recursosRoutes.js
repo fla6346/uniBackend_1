@@ -7,6 +7,6 @@ const router = Router();
 router.post('/', protect, createRecurso); 
 router.get('/', protect, getRecursos);
 router.put('/:id',updateRecurso);
-router.get('/:id',deleteRecurso);
+router.delete('/:id',deleteRecurso);
 
 module.exports = router;
