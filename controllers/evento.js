@@ -28,6 +28,7 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
 const createObjetivos = async (nuevoEventoId, data, transaction) => {
   const objetivosACrear = [];
   const parsedObjetivos = safeJsonParse(data.objetivos, {});
+  
 
   for (const [key, value] of Object.entries(parsedObjetivos)) {
     if (value === true && OBJETIVO_TYPES[key]) {
@@ -404,8 +405,9 @@ const createEvento = async (req, res) => {
 
 
 const getAllEventos = async (req, res) => {
-     const models = getModels();
+  const models = getModels();
   const { Evento } = models;
+  const sequelize = models.sequelize;
   try {
      const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -448,7 +450,7 @@ const fetchAllEvents = async () => {
 const getEventoById = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Evento, Resultado, User, Comite, Objetivo, ObjetivoPDI, Segmento, Recurso, Actividad, Servicio } = models;
-
+  const sequelize = models.sequelize;
   try {
     const { id } = req.params;
     const eventIdNum = parseInt(id, 10);
@@ -570,10 +572,18 @@ const getEventoById = asyncHandler(async (req, res) => {
     );
     const recursos = recursosRaw;
 
-    let presupuesto = null;
-    if (evento.datos_presupuesto) {
-      try { presupuesto = JSON.parse(evento.datos_presupuesto); } catch (e) { presupuesto = null; }
-    }
+    const [presupuestoRaw] = await sequelize.query(
+  `SELECT p.idpresupuesto, p.total_egresos, p.total_ingresos, p.balance,
+          json_agg(DISTINCT jsonb_build_object('descripcion', e.descripcion, 'cantidad', e.cantidad, 'precio_unitario', e.precio_unitario, 'total', e.total)) FILTER (WHERE e.idegreso IS NOT NULL) AS egresos,
+          json_agg(DISTINCT jsonb_build_object('descripcion', i.descripcion, 'cantidad', i.cantidad, 'precio_unitario', i.precio_unitario, 'total', i.total)) FILTER (WHERE i.idingreso IS NOT NULL) AS ingresos
+   FROM presupuesto p
+   LEFT JOIN egreso e ON e.idpresupuesto = p.idpresupuesto
+   LEFT JOIN ingreso i ON i.idpresupuesto = p.idpresupuesto
+   WHERE p.idevento = ?
+   GROUP BY p.idpresupuesto`,
+  { replacements: [eventIdNum] }
+);
+const presupuesto = presupuestoRaw[0] || null;
 
     const eventoCompleto = {
       ...evento.toJSON(),
@@ -601,8 +611,10 @@ const getEventoById = asyncHandler(async (req, res) => {
 });
 
 const updateEvento = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Evento, Actividad, Servicio, Fase } = models;
+  const sequelize = models.sequelize;
   const t = await sequelize.transaction();
-  const { Evento, Actividad, Servicio, Fase } = await getModels();
   
   try {
     const evento = await Evento.findByPk(req.params.id, { transaction: t });
@@ -679,6 +691,9 @@ const updateEvento = asyncHandler(async (req, res) => {
 });
 
 const deleteEvento = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Evento } = models;  
+  const sequelize = models.sequelize;
   try {
     const evento = await Evento.findByPk(req.params.id);
     if (!evento) return res.status(404).json({ message: 'Evento no encontrado' });
@@ -693,6 +708,7 @@ const deleteEvento = asyncHandler(async (req, res) => {
 const fetchEventsWithRawQuery = async () => {
   const models = getModels();
   const { Evento } = models;
+  const sequelize = models.sequelize;
   try {
     console.log('[DB-RAW] Buscando eventos con consulta directa...');
     const eventos = await Evento.findAll(
@@ -707,6 +723,7 @@ const fetchEventsWithRawQuery = async () => {
 };
 
 const getEventos = asyncHandler(async (req, res) => {
+  const sequelize = models.sequelize;
   try {
     const eventos = await fetchEventsWithRawQuery();
     res.status(200).json(eventos);
@@ -716,7 +733,11 @@ const getEventos = asyncHandler(async (req, res) => {
   }
 });
 
-const fetchEventById = async (id) => {
+const fetchEventById = async (id) => 
+  {
+    const models = getModels();
+    const { Evento } = models;
+  const sequelize = models.sequelize;
   try {
     console.log(`[DB] Buscando evento con ID: ${id}`);
     const evento = await Evento.findByPk(id, {
@@ -732,6 +753,7 @@ const fetchEventById = async (id) => {
 };
 
 const getEventoByIdA = asyncHandler(async (req, res) => {
+  const sequelize = models.sequelize;
   try {
     const evento = await fetchEventById(req.params.id);
     if (evento) res.status(200).json(evento);
