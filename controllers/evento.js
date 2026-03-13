@@ -406,7 +406,7 @@ const createEventoTipos = async (nuevoEventoId, tiposDeEvento, transaction) => {
   }
 };*/
 
-const createEvento = async (req, res) => {
+/*const createEvento = async (req, res) => {
   const models = getModels();
   const { Evento, Objetivo, Resultado, Recurso, Fase, ObjetivoPDI } = models;
   const sequelize = models.sequelize;
@@ -647,9 +647,7 @@ const getAllEventos = async (req, res) => {
     hoy.setHours(0, 0, 0, 0);
     
     const eventos = await Evento.findAll({
-      /* where: {
-        estado: { [Op.ne]: 'inactivo' } // ← excluye inactivos
-      },*/
+     
       order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
       attributes: { exclude: ['organizerId', 'categoryId', 'locationId'] }
     });
@@ -666,8 +664,259 @@ const getAllEventos = async (req, res) => {
     console.error('Error al obtener eventos:', error);
     res.status(500).json({ message: 'Error al obtener eventos', error: error.message });
   }
-};
+};*/
 
+const createEvento = async (req, res) => {
+  let models;
+  try {
+    models = getModels();
+  } catch (e) {
+    console.error('❌ Models no inicializados:', e.message);
+    return res.status(500).json({ message: 'Servidor no listo, reintenta en unos segundos.' });
+  }
+
+  const { Evento, Resultado, Fase, Presupuesto, Egreso, Ingreso } = models;
+  const sequelize = models.sequelize;
+
+  if (!sequelize) {
+    console.error('❌ sequelize es undefined. Keys en models:', Object.keys(models));
+    return res.status(500).json({ message: 'Conexión a base de datos no disponible.' });
+  }
+
+  const t = await sequelize.transaction();
+
+  try {
+    const data = req.body;
+    console.log('Datos recibidos:', JSON.stringify(data, null, 2));
+
+    if (!data.nombreevento || !data.fechaevento) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Campos requeridos: nombreevento, fechaevento' });
+    }
+
+    const responsableCompleto = `${req.user.nombre} ${req.user.apellidopat || ''}`.trim() || 'Responsable no especificado';
+
+    // 1. CREAR EVENTO
+    const nuevoEvento = await Evento.create({
+      nombreevento: data.nombreevento,
+      lugarevento: data.lugarevento || 'Por definir',
+      fechaevento: data.fechaevento,
+      horaevento: data.horaevento,
+      responsable_evento: responsableCompleto,
+      idacademico: req.user.idusuario,
+      idclasificacion: data.idclasificacion || null,
+      idsubcategoria: data.idsubcategoria || null,
+      argumentacion: data.argumentacion || null,
+    }, { transaction: t });
+
+    const nuevoEventoId = nuevoEvento.idevento;
+    console.log('✅ Evento creado con ID:', nuevoEventoId);
+
+    // 2. FASE MAESTRA
+    const faseMaestra = await Fase.findOne({ where: { nrofase: 1 }, transaction: t });
+    if (faseMaestra) {
+      nuevoEvento.idfase = faseMaestra.idfase;
+      await nuevoEvento.save({ transaction: t });
+    }
+
+    // 3. TIPOS DE EVENTO
+    if (Array.isArray(data.tipos_de_evento) && data.tipos_de_evento.length > 0) {
+      for (const tipo of data.tipos_de_evento) {
+        await sequelize.query(
+          'INSERT INTO evento_tipos (idevento, idtipoevento, texto_personalizado) VALUES (?, ?, ?)',
+          { replacements: [nuevoEventoId, tipo.id, tipo.texto_personalizado || null], transaction: t }
+        );
+      }
+      console.log('✅ Tipos de evento insertados:', data.tipos_de_evento.length);
+    }
+
+    // 4. OBJETIVOS
+    // El frontend envía array mixto: números o { id, texto_personalizado }
+    if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
+      for (const objetivo of data.objetivos) {
+        const idtipoobjetivo = typeof objetivo === 'number' ? objetivo : objetivo.id;
+        const texto = typeof objetivo === 'object' ? (objetivo.texto_personalizado || null) : null;
+        await sequelize.query(
+          'INSERT INTO objetivos (idevento, idtipoobjetivo, texto_personalizado, argumentacion) VALUES (?, ?, ?, ?)',
+          {
+            replacements: [nuevoEventoId, idtipoobjetivo, texto, data.argumentacion || null],
+            transaction: t
+          }
+        );
+      }
+      console.log('✅ Objetivos insertados:', data.objetivos.length);
+    }
+
+    // 5. OBJETIVOS PDI
+    if (Array.isArray(data.objetivos_pdi) && data.objetivos_pdi.length > 0) {
+      const descripcionesValidas = data.objetivos_pdi.filter(d => d && d.trim() !== '');
+      for (const descripcion of descripcionesValidas) {
+        await sequelize.query(
+          'INSERT INTO evento_pdi (idevento, descripcion) VALUES (?, ?)',
+          { replacements: [nuevoEventoId, descripcion], transaction: t }
+        );
+      }
+      console.log('✅ Objetivos PDI insertados:', descripcionesValidas.length);
+    }
+
+    // 6. SEGMENTOS OBJETIVO
+    if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0) {
+      for (const segmento of data.segmentos_objetivo) {
+        await sequelize.query(
+          'INSERT INTO evento_segmento (idevento, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
+          {
+            replacements: [nuevoEventoId, segmento.id, segmento.texto_personalizado || null],
+            transaction: t
+          }
+        );
+      }
+      console.log('✅ Segmentos insertados:', data.segmentos_objetivo.length);
+    }
+
+    // 7. RESULTADOS ESPERADOS
+    const resultados = typeof data.resultados_esperados === 'string'
+      ? JSON.parse(data.resultados_esperados)
+      : (data.resultados_esperados || {});
+
+    await Resultado.create({
+      idevento: nuevoEventoId,
+      participacion_esperada: parseInt(resultados.participacion, 10) || 0,
+      satisfaccion_esperada: resultados.satisfaccion || null,
+      otros_resultados: resultados.otro || null,
+    }, { transaction: t });
+    console.log('✅ Resultados esperados insertados');
+
+    // 8. RECURSOS EXISTENTES
+    if (Array.isArray(data.recursos_existentes) && data.recursos_existentes.length > 0) {
+      for (const idrecurso of data.recursos_existentes) {
+        await sequelize.query(
+          'INSERT INTO evento_recurso (idevento, idrecurso) VALUES (?, ?)',
+          { replacements: [nuevoEventoId, idrecurso], transaction: t }
+        );
+      }
+      console.log('✅ Recursos existentes vinculados:', data.recursos_existentes.length);
+    }
+
+    // 9. RECURSOS NUEVOS
+    if (Array.isArray(data.recursos_nuevos) && data.recursos_nuevos.length > 0) {
+      for (const recurso of data.recursos_nuevos) {
+        const [result] = await sequelize.query(
+          'INSERT INTO recurso (nombre_recurso, recurso_tipo, cantidad, habilitado) VALUES (?, ?, ?, ?) RETURNING idrecurso',
+          {
+            replacements: [recurso.nombre_recurso, recurso.recurso_tipo, recurso.cantidad || 1, true],
+            transaction: t
+          }
+        );
+        const nuevoIdRecurso = result[0]?.idrecurso;
+        if (nuevoIdRecurso) {
+          await sequelize.query(
+            'INSERT INTO evento_recurso (idevento, idrecurso) VALUES (?, ?)',
+            { replacements: [nuevoEventoId, nuevoIdRecurso], transaction: t }
+          );
+        }
+      }
+      console.log('✅ Recursos nuevos creados y vinculados:', data.recursos_nuevos.length);
+    }
+
+    // 10. PRESUPUESTO
+    if (data.presupuesto) {
+      const presupuesto = await Presupuesto.create({
+        idevento: nuevoEventoId,
+        total_egresos: data.presupuesto.total_egresos || 0,
+        total_ingresos: data.presupuesto.total_ingresos || 0,
+        balance: data.presupuesto.balance || 0,
+      }, { transaction: t });
+
+      const egresosValidos = (data.presupuesto.egresos || []).filter(e => e.descripcion?.trim());
+      if (egresosValidos.length > 0) {
+        await Egreso.bulkCreate(
+          egresosValidos.map(e => ({
+            idpresupuesto: presupuesto.idpresupuesto,
+            descripcion: e.descripcion,
+            cantidad: parseFloat(e.cantidad) || 0,
+            precio_unitario: parseFloat(e.precio_unitario) || 0,
+            total: parseFloat(e.total) || 0,
+          })),
+          { transaction: t }
+        );
+      }
+
+      const ingresosValidos = (data.presupuesto.ingresos || []).filter(i => i.descripcion?.trim());
+      if (ingresosValidos.length > 0) {
+        await Ingreso.bulkCreate(
+          ingresosValidos.map(i => ({
+            idpresupuesto: presupuesto.idpresupuesto,
+            descripcion: i.descripcion,
+            cantidad: parseFloat(i.cantidad) || 0,
+            precio_unitario: parseFloat(i.precio_unitario) || 0,
+            total: parseFloat(i.total) || 0,
+          })),
+          { transaction: t }
+        );
+      }
+      console.log('✅ Presupuesto insertado');
+    }
+
+    // 11. COMITÉ
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+      for (const idusuario of data.comite) {
+        await sequelize.query(
+          'INSERT INTO comite (idevento, idusuario) VALUES (?, ?)',
+          { replacements: [nuevoEventoId, idusuario], transaction: t }
+        );
+      }
+      console.log('✅ Comité insertado:', data.comite.length, 'miembros');
+    }
+
+    await t.commit();
+    console.log('✅ Transacción completada exitosamente');
+
+    // 12. NOTIFICACIONES (fuera de la transacción, no es crítico)
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+      try {
+        const { Notification } = require('./notificationController.js');
+        await Notification(
+          {
+            body: {
+              title: 'Nuevo evento en tu comité',
+              message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
+              type: 'info',
+              idevento: nuevoEventoId,
+              idusuarios: data.comite
+            }
+          },
+          {
+            status: (statusCode) => ({
+              json: (responseData) => {
+                if (statusCode >= 400) {
+                  console.error('⚠️ Error al enviar notificación:', responseData);
+                } else {
+                  console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros del comité.`);
+                }
+              }
+            })
+          }
+        );
+      } catch (notificationError) {
+        console.error('❗ Error no crítico al notificar al comité:', notificationError);
+      }
+    }
+
+    res.status(201).json({
+      message: 'Evento creado exitosamente',
+      idevento: nuevoEventoId
+    });
+
+  } catch (error) {
+    await t.rollback();
+    console.error('❌ Error en la transacción al crear el evento:', error);
+    res.status(500).json({
+      message: 'Error interno del servidor al crear el evento.',
+      error: error.message,
+      details: error.stack
+    });
+  }
+};
 const fetchAllEvents = async () => {
   try {
     const eventos = await Evento.findAll({
