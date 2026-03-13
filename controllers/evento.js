@@ -1,6 +1,5 @@
 const { getModels } = require('../models/index');
 const asyncHandler = require('express-async-handler');
-const { sequelize } = require('../config/db');
 
 // Constants for better maintainability
 const OBJETIVO_TYPES = {
@@ -141,6 +140,7 @@ const createEventoTipos = async (nuevoEventoId, tiposDeEvento, transaction) => {
 const createEvento = async (req, res) => {
     const models = getModels();
   const { Evento, Objetivo, Resultado, Recurso, Fase, ObjetivoPDI } = models;
+  const sequelize = models.sequelize;
   
   const t = await sequelize.transaction();
 
