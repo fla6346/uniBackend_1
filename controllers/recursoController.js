@@ -1,5 +1,6 @@
 const  asyncHandler = require('express-async-handler');
 const { getModels } = require ('../models/index.js');
+const { where } = require('sequelize');
 
 const createRecurso = asyncHandler(async (req, res) => {
   console.log('📦 Body recibido:', req.body);
@@ -44,7 +45,53 @@ const getRecursos = asyncHandler(async (req, res) => {
   });
   res.json({ recursos });
 })
+const updateRecurso = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Recurso } = models;
+  const {id} = req.params;
+
+  const recurso = await Recurso.findByPk(id);
+  if (!recurso) {
+    res.status(404);
+    throw new Error('Recurso no encontrado.');
+  }
+  const { nombre_recurso, recurso_tipo, descripcion, habilitado } = req.body;
+
+  await recurso.update({
+    nombre_recurso: nombre_recurso ?? recurso.nombre_recurso,
+    recurso_tipo: recurso_tipo ?? recurso.recurso_tipo,
+    descripcion: descripcion !== undefined ? descripcion : recurso.descripcion,
+    habilitado: habilitado !== undefined ? habilitado : recurso.habilitado
+  });
+
+  res.json({
+    message: 'Recurso actualizado exitosamente',
+    recurso: {
+      idrecurso: recurso.idrecurso,
+      nombre_recurso: recurso.nombre_recurso,
+      recurso_tipo: recurso.recurso_tipo,
+      descripcion: recurso.descripcion,
+      habilitado: recurso.habilitado
+    }
+  });
+});
+const deleteRecurso = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Recurso } = models;
+  const { id } = req.params;
+
+  const recurso = await Recurso.findByPk(id);
+  if (!recurso) {
+    res.status(404);
+    throw new Error('Recurso no encontrado.');
+  }
+
+  await recurso.update({ habilitado: 0 });
+  res.json({ message: 'Recurso deshabilitado exitosamente' });
+});
 module.exports = {
   createRecurso,
-  getRecursos
+  getRecursos,
+  updateRecurso,
+  deleteRecurso
 };
