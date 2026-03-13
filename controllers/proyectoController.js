@@ -312,12 +312,20 @@ const createEvento = async (req, res) => {
     const nuevoEventoId = nuevoEvento.idevento;
     console.log('✅ Evento creado con ID:', nuevoEventoId);
 
-    // 2. FASE MAESTRA
-    const faseMaestra = await Fase.findOne({ where: { nrofase: 1 }, transaction: t });
+    try{
+      const faseMaestra = await Fase.findOne({ 
+      where: { nrofase: 1 },
+      attributes: ['idfase', 'nrofase'],
+       transaction: t 
+      });
     if (faseMaestra) {
       nuevoEvento.idfase = faseMaestra.idfase;
       await nuevoEvento.save({ transaction: t });
     }
+  }catch (faseError) {
+    console.error('Error al buscar fase maestra:', faseError.message);
+  }
+
 
     // 3. TIPOS DE EVENTO
     if (Array.isArray(data.tipos_de_evento) && data.tipos_de_evento.length > 0) {
