@@ -576,7 +576,7 @@ const getEventoById = asyncHandler(async (req, res) => {
         },
         {
           model: Fase,
-          as: 'fase',
+          as: 'fases',
           attributes: ['nrofase']
         }
       ]
