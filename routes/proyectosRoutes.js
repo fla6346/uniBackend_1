@@ -11,7 +11,7 @@ const {
   getEstudianteFacultad
 } = require('../controllers/proyectoController.js');
 const {
-  Notification,
+  sendNotification,
   getUserNotifications,
   markAsRead,
   getUnreadCount
@@ -24,7 +24,7 @@ router.get('/estudiantes/facultad/:idfacultad',getEstudianteFacultad) ;
 router.get('/carreras/:id', protect, getCarreraById);
 
 router.get('/facultades/:id', protect,getFacultadById);
-router.post('/', Notification);
+router.post('/', sendNotification);
 router.get('/', getUserNotifications);
 router.patch('/:id/read', markAsRead);
 router.get('/unread-count', getUnreadCount);
