@@ -700,23 +700,69 @@ const getEventoById = asyncHandler(async (req, res) => {
     );
     const recursos = recursosRaw;
 
-    let presupuesto = null;
-    if (evento.datos_presupuesto) {
-      try {
-        presupuesto = JSON.parse(evento.datos_presupuesto);
-      } catch (e) {
-        presupuesto = null;
+    const [presupuestoData] = await sequelize.query(
+    `SELECT p.*, e.descripcion as egreso_desc, e.cantidad as egreso_cant, 
+            e.precio_unitario as egreso_precio, e.total as egreso_total,
+            i.descripcion as ingreso_desc, i.cantidad as ingreso_cant,
+            i.precio_unitario as ingreso_precio, i.total as ingreso_total
+     FROM presupuesto p
+     LEFT JOIN egreso e ON p.idpresupuesto = e.idpresupuesto
+     LEFT JOIN ingreso i ON p.idpresupuesto = i.idpresupuesto
+     WHERE p.idevento = ?`,
+    { replacements: [eventIdNum] }
+  );
+
+  let presupuesto = null;
+  let egresos = [];
+  let ingresos = [];
+
+  if (presupuestoData && presupuestoData.length > 0) {
+    // Datos del presupuesto principal
+    presupuesto = {
+      idpresupuesto: presupuestoData[0].idpresupuesto,
+      total_egresos: parseFloat(presupuestoData[0].total_egresos) || 0,
+      total_ingresos: parseFloat(presupuestoData[0].total_ingresos) || 0,
+      balance: parseFloat(presupuestoData[0].balance) || 0,
+    };
+
+    // Procesar egresos únicos
+    const egresosMap = new Map();
+    presupuestoData.forEach(row => {
+      if (row.egreso_desc && !egresosMap.has(row.egreso_desc)) {
+        egresosMap.set(row.egreso_desc, {
+          idegreso: row.idegreso,
+          descripcion: row.egreso_desc,
+          cantidad: parseFloat(row.egreso_cant) || 0,
+          precio_unitario: parseFloat(row.egreso_precio) || 0,
+          total: parseFloat(row.egreso_total) || 0,
+        });
       }
-    }
+    });
+    egresos = Array.from(egresosMap.values());
+
+    // Procesar ingresos únicos
+    const ingresosMap = new Map();
+    presupuestoData.forEach(row => {
+      if (row.ingreso_desc && !ingresosMap.has(row.ingreso_desc)) {
+        ingresosMap.set(row.ingreso_desc, {
+          idingreso: row.idingreso,
+          descripcion: row.ingreso_desc,
+          cantidad: parseFloat(row.ingreso_cant) || 0,
+          precio_unitario: parseFloat(row.ingreso_precio) || 0,
+          total: parseFloat(row.ingreso_total) || 0,
+        });
+      }
+    });
+    ingresos = Array.from(ingresosMap.values());
+  }
+
 
     // ✅ Construir la respuesta completa con actividades y servicios
     const eventoCompleto = {
       ...evento.toJSON(),
-      // ✅ Actividades separadas por tipo
       actividadesPrevias: actividades.filter(a => a.tipo === 'Previa'),
       actividadesDurante: actividades.filter(a => a.tipo === 'Durante'),
       actividadesPost: actividades.filter(a => a.tipo === 'Posterior'),
-      // ✅ Servicios contratados
       serviciosContratados: servicios,
       Resultados: resultados || [],
       TiposDeEvento: tiposDeEvento,
@@ -724,6 +770,8 @@ const getEventoById = asyncHandler(async (req, res) => {
       Comite: comite,
       Recursos: recursos,
       Presupuesto: presupuesto,
+      Egresos: egresos,
+      Ingresos: ingresos,
       ObjetivosPDI: pdiIndependientes,
       Clasificacion: clasificacion,
       fase: evento.fase ? [{
