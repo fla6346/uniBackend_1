@@ -2,9 +2,9 @@
 const { Router } =require ('express');
 const {
   getUserNotifications,
-  markAsRead,
-  getUnreadCount,Notification,
-  read
+  read,
+  getUnreadCount,
+  sendNotification,
 } = require('../controllers/notificationController.js');
 const {protect} =require('../middleware/authMiddleware.js'); 
 

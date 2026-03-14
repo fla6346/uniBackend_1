@@ -2,7 +2,7 @@ const { getModels } = require('../models/index');
 const { sequelize } = require('../config/db.js');
 const { Op } = require('sequelize');
 const asyncHandler = require('express-async-handler');
-
+const { sendNotification } = require('./notificationController.js');
 
 // --- CONSTANTES ---
 const OBJETIVO_TYPES = {
@@ -488,90 +488,37 @@ const createEvento = async (req, res) => {
     }
 
     await t.commit();
-    console.log('✅ Transacción completada exitosamente');
+    await sendNotification({
+      idusuario: data.comite,
+      titulo: 'Nuevo evento en tu comité',
+      mensaje: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
+      tipo: 'nuevo_evento'
+    });
 
-    // 11. NOTIFICACIONES (fuera de la transacción)
-    if (Array.isArray(data.comite) && data.comite.length > 0) {
-      try {
-        const { Notification } = require('./notificationController.js');
-        await Notification(
-          {
-            body: {
-              title: 'Nuevo evento en tu comité',
-              message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
-              type: 'info',
-              idevento: nuevoEventoId,
-              idusuarios: data.comite
-            }
-          },
-          {
-            status: (statusCode) => ({
-              json: (responseData) => {
-                if (statusCode >= 400) {
-                  console.error('⚠️ Error al enviar notificación:', responseData);
-                } else {
-                  console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros.`);
-                }
-              }
-            })
-          }
-        );
-      } catch (notificationError) {
-        console.error('❗ Error no crítico al notificar:', notificationError.message);
-      }
-    }
-    await t.commit();
-    console.log('✅ Transacción completada exitosamente');
-
-    // 12. NOTIFICACIONES (fuera de la transacción, no es crítico)
-    if (Array.isArray(data.comite) && data.comite.length > 0) {
-      try {
-        const { Notification } = require('./notificationController.js');
-        await Notification(
-          {
-            body: {
-              title: 'Nuevo evento en tu comité',
-              message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
-              type: 'info',
-              idevento: nuevoEventoId,
-              idusuarios: data.comite
-            }
-          },
-          {
-            status: (statusCode) => ({
-              json: (responseData) => {
-                if (statusCode >= 400) {
-                  console.error('⚠️ Error al enviar notificación:', responseData);
-                } else {
-                  console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros del comité.`);
-                }
-              }
-            })
-          }
-        );
-      } catch (notificationError) {
-        console.error('❗ Error no crítico al notificar al comité:', notificationError);
-      }
-    }
-
-    res.status(201).json({
+    return res.status(201).json({
       message: 'Evento creado exitosamente',
       idevento: nuevoEventoId
     });
 
+    
+
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) {
+      await t.rollback();
+    }
     console.error('❌ Error en la transacción al crear el evento:', error);
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Error interno del servidor al crear el evento.',
       error: error.message,
-      details: error.stack
+      sql: error.parent?.sql || null
     });
-  }
+  
+  } 
 };
 const getAllEventos = async (req, res) => {
   const models = getModels();
-  const Evento = models.Evento;
+  const sequelize = models.sequelize;
+  const {Evento, User,Fase} = models;
 
   const eventos = await Evento.findAll({
     order: [['fechaevento', 'ASC'], ['horaevento', 'ASC']],
@@ -1539,6 +1486,7 @@ const getEventosNoAprobados = async (req, res) => {
 
 const getDashboardStats = asyncHandler(async (req, res) => {
   const models = getModels();
+  const sequelize = models.sequelize;
   const { Evento, User } = models;
 
   const ahora = new Date();

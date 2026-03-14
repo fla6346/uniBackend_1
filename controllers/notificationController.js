@@ -1,63 +1,76 @@
-const  asyncHandler = require ('express-async-handler');
+const asyncHandler = require('express-async-handler');
 const { getModels } = require('../models/index.js'); 
 
-
-const Notification = asyncHandler(async (req, res) => {
-   try {
-    const userId = req.user.idusuario; 
-    const models = getModels();
-    const {Notificacion} = models;
-    const notificaciones = await Notificacion.findAll({
-      where: { idusuario: userId },
-      order: [['created_at', 'DESC']],
-      attributes: ['id', 'idusuario', 'titulo', 'mensaje', 'tipo', 'estado', 'created_at'],
-    });
-
-    res.status(200).json(notificaciones);
-  } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
-  }
-});
-const getUserNotifications = async (req, res) => {
+const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_evento', estado = 'no_leido' }) => {
   try {
-    const models = getModels();
-    const { Notificacion } = models;
-
-    const userId = req.user?.idusuario;
-    if (!userId) {
-      return res.status(401).json({ error: 'Usuario no autenticado' });
+    if (!idusuario) {
+      console.warn('⚠️ sendNotification: idusuario no proporcionado');
+      return;
     }
-
-    const notificaciones = await Notificacion.findAll({
-      where: { idusuario: userId },
-      order: [['created_at', 'DESC']]
-    });
-
-    res.json(notificaciones);
+    
+    const models = getModels();
+    const sequelize = models.sequelize;
+    
+    await sequelize.query(
+      `INSERT INTO notificacion (idusuario, titulo, mensaje, tipo, estado, created_at, updated_at) 
+       VALUES (:idusuario, :titulo, :mensaje, :tipo, :estado, :created_at, :updated_at)`,
+      {
+        replacements: {
+          idusuario,
+          titulo,
+          mensaje,
+          tipo,
+          estado,
+          created_at: new Date(),
+          updated_at: new Date()
+        },
+        type: sequelize.QueryTypes.INSERT
+      }
+    );
   } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ error: 'Error al cargar notificaciones' });
+    console.error('❗ Error al crear notificación:', error.message);
+    // Error no crítico: no interrumpir el flujo principal
   }
 };
- const read = async(req, res) =>{
-   try {
-    const { id } = req.params;
-    const userId = req.user.idusuario;
 
-    const notif = await Notificacion.findOne({ where: { id, idusuario: userId } });
-    if (!notif) return res.status(404).json({ message: 'Notificación no encontrada' });
+const getUserNotifications = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Notificacion } = models;
 
-    notif.estado = 'leido';
-    await notif.save();
-
-    res.status(200).json({ message: 'Notificación marcada como leída' });
-  } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+  const userId = req.user?.idusuario;
+  if (!userId) {
+    return res.status(401).json({ error: 'Usuario no autenticado' });
   }
-}
- const markAsRead = asyncHandler(async (req, res) => {
+
+  const notificaciones = await Notificacion.findAll({
+    where: { idusuario: userId },
+    order: [['created_at', 'DESC']],
+    attributes: ['idnotificacion', 'titulo', 'mensaje', 'tipo', 'estado', 'created_at'],
+  });
+
+  res.json(notificaciones);
+});
+
+const read = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Notificacion } = models;
+
+  const { id } = req.params;
+  const userId = req.user?.idusuario;
+  
+  if (!userId) return res.status(401).json({ message: 'Usuario no autenticado' });
+
+  const [updated] = await Notificacion.update(
+    { estado: 'leido', updated_at: new Date() },
+    { where: { idnotificacion: id, idusuario: userId } }
+  );
+
+  if (updated === 0) return res.status(404).json({ message: 'Notificación no encontrada' });
+
+  res.json({ success: true, message: 'Notificación marcada como leída' });
+});
+
+const markAsRead = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Notificacion } = models;
 
@@ -68,29 +81,24 @@ const getUserNotifications = async (req, res) => {
     return res.status(401).json({ message: 'Usuario no autenticado' });
   }
 
-  try {
-    const [updated] = await Notificacion.update(
-      { read: true, estado: 'leido' },
-      {
-        where: {
-          idnotificacion: notificationId,
-          idusuario: userId
-        }
+  const [updated] = await Notificacion.update(
+    { estado: 'leido', updated_at: new Date() }, // ✅ Solo 'estado', sin campo 'read' inexistente
+    {
+      where: {
+        idnotificacion: notificationId,
+        idusuario: userId
       }
-    );
-
-    if (updated === 0) {
-      return res.status(404).json({ error: 'Notificación no encontrada' });
     }
+  );
 
-    res.json({ success: true, message: 'Notificación marcada como leída' });
-  } catch (error) {
-    console.error('Error marcando notificación como leída:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+  if (updated === 0) {
+    return res.status(404).json({ error: 'Notificación no encontrada' });
   }
+
+  res.json({ success: true, message: 'Notificación marcada como leída' });
 });
 
- const getUnreadCount = asyncHandler(async (req, res) => {
+const getUnreadCount = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Notificacion } = models;
 
@@ -100,22 +108,18 @@ const getUserNotifications = async (req, res) => {
     return res.status(401).json({ message: 'Usuario no autenticado' });
   }
 
-  try {
-    const count = await Notificacion.count({
-      where: {
-        idusuario: userId,
-        read: false
-      }
-    });
+  const count = await Notificacion.count({
+    where: {
+      idusuario: userId,
+      estado: 'no_leido'  
+    }
+  });
 
-    res.json({ unread_count: count });
-  } catch (error) {
-    console.error('Error obteniendo conteo de notificaciones no leídas:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
+  res.json({ unread_count: count });
 });
+
 module.exports = {
-  Notification,
+  sendNotification,        
   getUserNotifications,
   markAsRead,
   getUnreadCount,
