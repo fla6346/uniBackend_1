@@ -281,7 +281,6 @@ const createEvento = async (req, res) => {
   const sequelize = models.sequelize;
 
   if (!sequelize) {
-    console.error('❌ sequelize es undefined. Keys en models:', Object.keys(models));
     return res.status(500).json({ message: 'Conexión a base de datos no disponible.' });
   }
 
@@ -295,8 +294,6 @@ const createEvento = async (req, res) => {
       await t.rollback();
       return res.status(400).json({ message: 'Campos requeridos: nombreevento, fechaevento' });
     }
-
-    const responsableCompleto = `${req.user.nombre} ${req.user.apellidopat || ''}`.trim() || 'Responsable no especificado';
 
     // 1. CREAR EVENTO
     const nuevoEvento = await Evento.create({
@@ -312,22 +309,23 @@ const createEvento = async (req, res) => {
     const nuevoEventoId = nuevoEvento.idevento;
     console.log('✅ Evento creado con ID:', nuevoEventoId);
 
-    try{
-      const faseMaestra = await Fase.findOne({ 
-      where: { nrofase: 1 },
-      attributes: ['idfase', 'nrofase'],
-       transaction: t 
+    // 2. FASE MAESTRA
+    try {
+      const faseMaestra = await Fase.findOne({
+        where: { nrofase: 1 },
+        attributes: ['idfase', 'nrofase'],
+        transaction: t
       });
-    if (faseMaestra) {
-      nuevoEvento.idfase = faseMaestra.idfase;
-      await nuevoEvento.save({ transaction: t });
+      if (faseMaestra) {
+        nuevoEvento.idfase = faseMaestra.idfase;
+        await nuevoEvento.save({ transaction: t });
+      }
+    } catch (faseError) {
+      console.warn('⚠️ No se pudo asignar fase:', faseError.message);
     }
-  }catch (faseError) {
-    console.error('Error al buscar fase maestra:', faseError.message);
-  }
-
 
     // 3. TIPOS DE EVENTO
+    // evento_tipos: (idevento, idtipoevento, texto_personalizado)
     if (Array.isArray(data.tipos_de_evento) && data.tipos_de_evento.length > 0) {
       for (const tipo of data.tipos_de_evento) {
         await sequelize.query(
@@ -339,23 +337,44 @@ const createEvento = async (req, res) => {
     }
 
     // 4. OBJETIVOS
-    // El frontend envía array mixto: números o { id, texto_personalizado }
+    // objetivos: (idobjetivo, idtipoobjetivo, texto_personalizado, idargumentacion, idobjetivo_pdi)
+    // evento_objetivos: (idevento, idobjetivo, texto_personalizado)
+    // objetivo_segmento: (idobjetivo, idsegmento, texto_personalizado)
     if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
       for (const objetivo of data.objetivos) {
         const idtipoobjetivo = typeof objetivo === 'number' ? objetivo : objetivo.id;
         const texto = typeof objetivo === 'object' ? (objetivo.texto_personalizado || null) : null;
-        await sequelize.query(
-          'INSERT INTO objetivos (idevento, idtipoobjetivo, texto_personalizado, argumentacion) VALUES (?, ?, ?, ?)',
-          {
-            replacements: [nuevoEventoId, idtipoobjetivo, texto, data.argumentacion || null],
-            transaction: t
-          }
+
+        // Insertar en objetivos
+        const [result] = await sequelize.query(
+          'INSERT INTO objetivos (idtipoobjetivo, texto_personalizado) VALUES (?, ?) RETURNING idobjetivo',
+          { replacements: [idtipoobjetivo, texto], transaction: t }
         );
+
+        const nuevoIdObjetivo = result[0]?.idobjetivo;
+        if (!nuevoIdObjetivo) continue;
+
+        // Vincular en evento_objetivos
+        await sequelize.query(
+          'INSERT INTO evento_objetivos (idevento, idobjetivo, texto_personalizado) VALUES (?, ?, ?)',
+          { replacements: [nuevoEventoId, nuevoIdObjetivo, texto], transaction: t }
+        );
+
+        // Vincular segmentos en objetivo_segmento: (idobjetivo, idsegmento, texto_personalizado)
+        if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0) {
+          for (const segmento of data.segmentos_objetivo) {
+            await sequelize.query(
+              'INSERT INTO objetivo_segmento (idobjetivo, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
+              { replacements: [nuevoIdObjetivo, segmento.id, segmento.texto_personalizado || null], transaction: t }
+            );
+          }
+        }
       }
-      console.log('✅ Objetivos insertados:', data.objetivos.length);
+      console.log('✅ Objetivos y segmentos insertados:', data.objetivos.length);
     }
 
     // 5. OBJETIVOS PDI
+    // evento_pdi: (idevento_pdi, idevento, descripcion)
     if (Array.isArray(data.objetivos_pdi) && data.objetivos_pdi.length > 0) {
       const descripcionesValidas = data.objetivos_pdi.filter(d => d && d.trim() !== '');
       for (const descripcion of descripcionesValidas) {
@@ -367,34 +386,28 @@ const createEvento = async (req, res) => {
       console.log('✅ Objetivos PDI insertados:', descripcionesValidas.length);
     }
 
-    // 6. SEGMENTOS OBJETIVO
-    if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0) {
-      for (const segmento of data.segmentos_objetivo) {
-        await sequelize.query(
-          'INSERT INTO evento_segmento (idevento, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
-          {
-            replacements: [nuevoEventoId, segmento.id, segmento.texto_personalizado || null],
-            transaction: t
-          }
-        );
-      }
-      console.log('✅ Segmentos insertados:', data.segmentos_objetivo.length);
-    }
-
-    // 7. RESULTADOS ESPERADOS
+    // 6. RESULTADOS ESPERADOS
+    // resultado: (idresultados_esperados, idevento, satisfaccion_real, otros_resultados, participacion_esperada, satisfaccion_esperada)
     const resultados = typeof data.resultados_esperados === 'string'
       ? JSON.parse(data.resultados_esperados)
       : (data.resultados_esperados || {});
 
-    await Resultado.create({
-      idevento: nuevoEventoId,
-      participacion_esperada: parseInt(resultados.participacion, 10) || 0,
-      satisfaccion_esperada: resultados.satisfaccion || null,
-      otros_resultados: resultados.otro || null,
-    }, { transaction: t });
+    await sequelize.query(
+      'INSERT INTO resultado (idevento, participacion_esperada, satisfaccion_esperada, otros_resultados) VALUES (?, ?, ?, ?)',
+      {
+        replacements: [
+          nuevoEventoId,
+          parseInt(resultados.participacion, 10) || 0,
+          resultados.satisfaccion || null,
+          resultados.otro || null
+        ],
+        transaction: t
+      }
+    );
     console.log('✅ Resultados esperados insertados');
 
-    // 8. RECURSOS EXISTENTES
+    // 7. RECURSOS EXISTENTES
+    // evento_recurso: (idevento, idrecurso, cantidad, observaciones, fecha)
     if (Array.isArray(data.recursos_existentes) && data.recursos_existentes.length > 0) {
       for (const idrecurso of data.recursos_existentes) {
         await sequelize.query(
@@ -405,15 +418,12 @@ const createEvento = async (req, res) => {
       console.log('✅ Recursos existentes vinculados:', data.recursos_existentes.length);
     }
 
-    // 9. RECURSOS NUEVOS
+    // 8. RECURSOS NUEVOS
     if (Array.isArray(data.recursos_nuevos) && data.recursos_nuevos.length > 0) {
       for (const recurso of data.recursos_nuevos) {
         const [result] = await sequelize.query(
           'INSERT INTO recurso (nombre_recurso, recurso_tipo, cantidad, habilitado) VALUES (?, ?, ?, ?) RETURNING idrecurso',
-          {
-            replacements: [recurso.nombre_recurso, recurso.recurso_tipo, recurso.cantidad || 1, true],
-            transaction: t
-          }
+          { replacements: [recurso.nombre_recurso, recurso.recurso_tipo, recurso.cantidad || 1, true], transaction: t }
         );
         const nuevoIdRecurso = result[0]?.idrecurso;
         if (nuevoIdRecurso) {
@@ -423,10 +433,10 @@ const createEvento = async (req, res) => {
           );
         }
       }
-      console.log('✅ Recursos nuevos creados y vinculados:', data.recursos_nuevos.length);
+      console.log('✅ Recursos nuevos creados:', data.recursos_nuevos.length);
     }
 
-    // 10. PRESUPUESTO
+    // 9. PRESUPUESTO
     if (data.presupuesto) {
       const presupuesto = await Presupuesto.create({
         idevento: nuevoEventoId,
@@ -465,7 +475,8 @@ const createEvento = async (req, res) => {
       console.log('✅ Presupuesto insertado');
     }
 
-    // 11. COMITÉ
+    // 10. COMITÉ
+    // comite: (created_at, idevento, idusuario)
     if (Array.isArray(data.comite) && data.comite.length > 0) {
       for (const idusuario of data.comite) {
         await sequelize.query(
@@ -476,6 +487,39 @@ const createEvento = async (req, res) => {
       console.log('✅ Comité insertado:', data.comite.length, 'miembros');
     }
 
+    await t.commit();
+    console.log('✅ Transacción completada exitosamente');
+
+    // 11. NOTIFICACIONES (fuera de la transacción)
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+      try {
+        const { Notification } = require('./notificationController.js');
+        await Notification(
+          {
+            body: {
+              title: 'Nuevo evento en tu comité',
+              message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
+              type: 'info',
+              idevento: nuevoEventoId,
+              idusuarios: data.comite
+            }
+          },
+          {
+            status: (statusCode) => ({
+              json: (responseData) => {
+                if (statusCode >= 400) {
+                  console.error('⚠️ Error al enviar notificación:', responseData);
+                } else {
+                  console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros.`);
+                }
+              }
+            })
+          }
+        );
+      } catch (notificationError) {
+        console.error('❗ Error no crítico al notificar:', notificationError.message);
+      }
+    }
     await t.commit();
     console.log('✅ Transacción completada exitosamente');
 
