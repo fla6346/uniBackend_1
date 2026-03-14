@@ -790,6 +790,8 @@ const getEventoById = asyncHandler(async (req, res) => {
   }
 });
 const updateEvento = asyncHandler(async (req, res) => {
+  const models = getModels(); 
+  const sequelize = models.sequelize; 
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
