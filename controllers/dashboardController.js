@@ -307,55 +307,76 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
 });
 
 const getMyHistoricalData = asyncHandler(async (req, res) => {
+  // ✅ Debug: Verificar usuario y rol
+  console.log('🔍 [getHistoricalData] req.user:', req.user);
+  
+  if (!req.user || req.user.role !== 'admin') {
+    console.warn('⚠️ Acceso denegado - role:', req.user?.role);
+    return res.status(403).json({ message: 'Acceso denegado: solo administradores' });
+  }
+
+  const models = getModels();
+  const { Evento, sequelize } = models;
+  const { Op } = require('sequelize'); // ✅ Asegurar importación de Op
+
   try {
-    const models = getModels();
-    const { Evento, Academico } = models;
-    const { idusuario } = req.user;
-
-    if (!idusuario) {
-      return res.status(401).json({ error: 'Usuario no identificado' });
-    }
-    const academicos = await Academico.findAll({
-      where: { idusuario: req.user.idusuario }
-    });
-
-    if (!academicos || academicos.length === 0) {
-      return res.status(403).json({ error: 'No tienes perfil de académico.' });
-    }
-
-    const idsAcademico = academicos.map(a => a.idacademico);
-
     const now = new Date();
-    const data = [];
+    const historical = [];
+
+    console.log('📅 [getHistoricalData] Calculando últimos 6 meses desde:', now.toISOString());
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now);
-      date.setMonth(date.getMonth() - i);
-      const start = new Date(date.getFullYear(), date.getMonth(), 1);
-      const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const end = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+      const monthName = monthDate.toLocaleString('es-ES', { month: 'short', year: '2-digit' });
 
-      const eventos = await Evento.findAll({
+      console.log(`🔄 Mes ${i}: ${monthName} | Rango: ${start.toISOString()} a ${end.toISOString()}`);
+
+      // ✅ Intentar con created_at primero
+      let count = await Evento.count({
         where: {
-          idacademico: idsAcademico,
-          created_at: { [Op.between]: [start, end] }
-        },
-        attributes: ['estado']
+          [Op.or]: [
+            { created_at: { [Op.gte]: start, [Op.lt]: end } },
+            // ✅ Fallback: si created_at es NULL, usar fechaevento
+            { 
+              created_at: { [Op.is]: null },
+              fechaevento: { [Op.gte]: start, [Op.lt]: end }
+            }
+          ]
+        }
       });
 
-      const total = eventos.length;
+      // ✅ Debug: si count es 0, hacer consulta raw para verificar
+      if (count === 0) {
+        const [rawCount] = await sequelize.query(
+          `SELECT COUNT(*) as total FROM evento 
+           WHERE (created_at >= :start AND created_at < :end)
+              OR (created_at IS NULL AND fechaevento >= :start AND fechaevento < :end)`,
+          { replacements: { start, end }, type: sequelize.QueryTypes.SELECT }
+        );
+        console.log(`⚠️ Count ORM: 0 | Count RAW: ${rawCount?.total || 0}`);
+        count = parseInt(rawCount?.total || 0);
+      }
 
-      data.push({
-        name: start.toLocaleString('es-ES', { month: 'short', year: '2-digit' }),
-        eventos: total
+      historical.push({
+        name: monthName,
+        eventos: count
       });
     }
 
-    res.status(200).json({ historical: data });
+    console.log('✅ [getHistoricalData] Datos históricos:', historical);
+    res.status(200).json({ historical });
+
   } catch (error) {
-    console.error('❌ Error en getMyHistoricalData:', error);
+    console.error('❌ Error en getHistoricalData:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ 
-      error: 'Error al cargar tu historial',
-      message: error.message 
+      message: 'Error al cargar datos históricos',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
