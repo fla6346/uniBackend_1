@@ -372,9 +372,16 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     }
 
     const { idusuario } = req.user;
-
     const models = getModels();
     const { sequelize } = models;
+    const { Op } = require('sequelize');
+
+    // --- NUEVO: Calcular fecha límite (hace 1 mes) ---
+    const DIAS_A_MOSTRAR = 30; 
+    const fechaLimite = new Date();
+    fechaLimite.setDate(fechaLimite.getDate() - DIAS_A_MOSTRAR);
+    console.log(`🔍 [getMyCommitteeEvents] Buscando eventos del comité desde: ${fechaLimite.toISOString()}`);
+    // -------------------------------------------------
 
     try {
       const tableCheck = await sequelize.query(
@@ -387,6 +394,7 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       console.warn('⚠️ No se pudo verificar estructura de tabla:', checkError.message);
     }
 
+    // 1. Obtener registros del comité (asignaciones)
     const committeeRecords = await sequelize.query(
       `SELECT idevento, "created_at" as "created_at" 
        FROM public.comite 
@@ -397,17 +405,22 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       }
     );
 
-
     if (committeeRecords.length === 0) {
+      console.log('ℹ️ [getMyCommitteeEvents] Usuario no está en ningún comité');
       return res.status(200).json({ events: [] });
     }
 
     const eventoIds = committeeRecords.map(record => record.idevento);
 
-
     const { Evento } = models;
+    
+    // 2. Obtener eventos con FILTRO DE FECHA
     const events = await Evento.findAll({
-      where: { idevento: eventoIds },
+      where: { 
+        idevento: eventoIds,
+        // --- NUEVO: Filtrar eventos creados en el último mes ---
+        created_at: { [Op.gte]: fechaLimite }
+      },
       attributes: [
         'idevento',
         'nombreevento',
@@ -419,7 +432,12 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
       order: [['created_at', 'DESC']]
     });
 
+    console.log(`🔍 [getMyCommitteeEvents] Eventos encontrados: ${events.length}`);
+    if(events.length > 0) {
+        console.log(`🔍 [getMyCommitteeEvents] El evento más antiguo retornado tiene fecha: ${events[events.length-1].created_at}`);
+    }
 
+    // 3. Mapear fecha de asignación al comité
     const eventsWithAssignment = events.map(event => {
       const assignment = committeeRecords.find(r => r.idevento === event.idevento);
       return {
