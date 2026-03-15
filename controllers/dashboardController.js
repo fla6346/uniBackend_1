@@ -470,6 +470,15 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     });
   }
 });
+const myEvent= asyncHandler(async (req, res) => {
+  if (!req.user || !req.user.idusuario) {
+      console.error('Usuario no autenticado o req.user faltante');
+      return res.status(401).json({ 
+        error: 'No autorizado. Por favor inicia sesión nuevamente.',
+        debug: { hasUser: !!req.user, user: req.user }
+      });
+    }
+})
 module.exports = {
   getDashboardStats,
   getMensualStats,
