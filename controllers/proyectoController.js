@@ -1418,119 +1418,126 @@ const getEventosAprobadosPorFacultad = asyncHandler(async (req, res) => {
 });
 
 const getEventosNoAprobados = async (req, res) => {
-  const models = getModels();
-  const { Evento, User, Academico, Facultad } = models;
+    const models = getModels();
+    const { Evento, User, Academico, Facultad } = models;
+    const { Op } = require('sequelize'); // Asegúrate de tener Op disponible (ya está importado al inicio del archivo)
 
-  try {
-    const userId = req.user.idusuario;
-    const userRole = req.user.role;
+    try {
+        const userId = req.user.idusuario;
+        const userRole = req.user.role;
+        
+        // --- NUEVO: Calcular fecha límite (hace 1 mes) ---
+        const fechaLimite = new Date();
+        fechaLimite.setMonth(fechaLimite.getMonth() - 1);
+        // -------------------------------------------------
 
-    let eventos;
+        let eventos;
+        if (userRole === 'admin' || userRole === 'daf') {
+            // ✅ Admin/DAF ven TODOS los eventos pendientes RECIENTES
+            eventos = await Evento.findAll({
+                where: { 
+                    estado: 'pendiente',
+                    // --- NUEVO: Filtrar por fecha de creación ---
+                    created_at: { [Op.gte]: fechaLimite } 
+                    // Si prefieres filtrar por la fecha del evento usa: fechaevento: { [Op.gte]: fechaLimite }
+                },
+                distinct: true,
+                attributes: { include: ['idfase'] },
+                include: [{
+                    model: User,
+                    as: 'academicoCreador',
+                    attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+                    include: [{
+                        model: Academico,
+                        as: 'academico',
+                        attributes: ['facultad_id'],
+                        include: [{
+                            model: Facultad,
+                            as: 'facultad',
+                            attributes: ['nombre_facultad']
+                        }]
+                    }]
+                }],
+                order: [['created_at', 'DESC']]
+            });
+        } else if (userRole === 'academico') {
+            const academicoLogueado = await Academico.findOne({
+                where: { idusuario: userId },
+                attributes: ['facultad_id']
+            });
+            if (!academicoLogueado) {
+                return res.status(404).json({ message: 'Académico no encontrado' });
+            }
+            const facultadId = academicoLogueado.facultad_id;
+            eventos = await Evento.findAll({
+                where: { 
+                    estado: 'pendiente',
+                    // --- NUEVO: Filtrar por fecha de creación ---
+                    created_at: { [Op.gte]: fechaLimite }
+                },
+                subQuery: false,
+                include: [{
+                    model: User,
+                    as: 'academicoCreador',
+                    attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
+                    required: true,
+                    include: [{
+                        model: Academico,
+                        as: 'academico',
+                        attributes: ['facultad_id'],
+                        where: { facultad_id: facultadId },
+                        required: true,
+                        include: [{
+                            model: Facultad,
+                            as: 'facultad',
+                            attributes: ['nombre_facultad']
+                        }]
+                    }]
+                }],
+                order: [['created_at', 'DESC']]
+            });
+        } else {
+            return res.status(403).json({ message: 'Acceso denegado' });
+        }
 
-    if (userRole === 'admin' || userRole === 'daf') {
-      // ✅ Admin/DAF ven TODOS los eventos pendientes con información de facultad
-      eventos = await Evento.findAll({
-        where: { estado: 'pendiente' },
-        distinct: true,
-        attributes: { include: ['idfase'] },
-        include: [{
-          model: User,
-          as: 'academicoCreador',
-          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
-          include: [{
-            model: Academico,
-            as: 'academico',
-            attributes: ['facultad_id'],
-            include: [{
-              model: Facultad,
-              as: 'facultad',
-              attributes: ['nombre_facultad']
-            }]
-          }]
-        }],
-        order: [['created_at', 'DESC']]
-      });
-
-    } else if (userRole === 'academico') {
-      const academicoLogueado = await Academico.findOne({
-        where: { idusuario: userId },
-        attributes: ['facultad_id']
-      });
-
-      if (!academicoLogueado) {
-        return res.status(404).json({ message: 'Académico no encontrado' });
-      }
-
-      const facultadId = academicoLogueado.facultad_id;
-
-       eventos = await Evento.findAll({
-    where: { estado: 'pendiente' },
-    subQuery: false,
-    //distinct: true,
-    include: [{
-      model: User,
-      as: 'academicoCreador',
-      attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat'],
-      required: true,
-      include: [{
-        model: Academico,
-        as: 'academico',
-        attributes: ['facultad_id'],
-        where: { facultad_id: facultadId }, 
-        required: true,
-        include: [{
-          model: Facultad,
-          as: 'facultad',
-          attributes: ['nombre_facultad']
-        }]
-      }]
-    }],
-    order: [['created_at', 'DESC']]
-  });
-} else {
-  return res.status(403).json({ message: 'Acceso denegado' }); 
-}
-    const eventosUnicos = Array.from(
-      new Map(eventos.map(e => [e.idevento, e])).values()
-    );
-
-    const eventosFormateados = eventosUnicos.map(event => {
-      const creador = event.academicoCreador;
-      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
-
-      return {
-        id: event.idevento,
-        title: event.nombreevento || 'Sin título',
-        description: event.descripcion || 'Sin descripción',
-        date: event.fechaevento ? new Date(event.fechaevento).toLocaleDateString('es-ES') : 'N/A',
-        time: event.horaevento || 'N/A',
-        location: event.lugarevento || 'Sin ubicación',
-        organizer: creador 
-          ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
-          : 'Sin organizador',
-        category: 'General',
-        priority: 'normal',
-        submittedBy: creador 
-          ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
-          : 'Sistema',
-        submittedDate: event.created_at || event.fechaevento,
-        approvedAt: event.fecha_aprobacion,
-        approvedBy: event.admin_aprobador,
-        additionalComments: event.comentarios_admin,
-        rejectionDate: event.fecha_rechazo,
-        rejectionReason: event.razon_rechazo,
-        classificationId: event.idclasificacion,
-        resultId: event.idresultado,
-        area: facultadNombre // ✅ Campo 'area' para mostrar en el frontend
-      };
-    });
-
-    return res.status(200).json(eventosFormateados);
-
-  } catch (error) {
-    console.error('Error en getEventosNoAprobados:', error);
-    return res.status(500).json({ error: 'Error al cargar eventos pendientes' });
-  }
+        // ... (El resto del código de formateado se mantiene igual) ...
+        const eventosUnicos = Array.from(
+            new Map(eventos.map(e => [e.idevento, e])).values()
+        );
+        const eventosFormateados = eventosUnicos.map(event => {
+            const creador = event.academicoCreador;
+            const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
+            return {
+                id: event.idevento,
+                title: event.nombreevento || 'Sin título',
+                description: event.descripcion || 'Sin descripción',
+                date: event.fechaevento ? new Date(event.fechaevento).toLocaleDateString('es-ES') : 'N/A',
+                time: event.horaevento || 'N/A',
+                location: event.lugarevento || 'Sin ubicación',
+                organizer: creador
+                    ? `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim() || 'Sin nombre'
+                    : 'Sin organizador',
+                category: 'General',
+                priority: 'normal',
+                submittedBy: creador
+                    ? `${creador.nombre?.charAt(0) || ''}. ${creador.apellidopat || ''}`.trim()
+                    : 'Sistema',
+                submittedDate: event.created_at || event.fechaevento,
+                approvedAt: event.fecha_aprobacion,
+                approvedBy: event.admin_aprobador,
+                additionalComments: event.comentarios_admin,
+                rejectionDate: event.fecha_rechazo,
+                rejectionReason: event.razon_rechazo,
+                classificationId: event.idclasificacion,
+                resultId: event.idresultado,
+                area: facultadNombre 
+            };
+        });
+        return res.status(200).json(eventosFormateados);
+    } catch (error) {
+        console.error('Error en getEventosNoAprobados:', error);
+        return res.status(500).json({ error: 'Error al cargar eventos pendientes' });
+    }
 };
   
 
