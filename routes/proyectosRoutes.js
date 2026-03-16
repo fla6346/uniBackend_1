@@ -16,9 +16,10 @@ const {
   markAsRead,
   getUnreadCount
 } = require('../controllers/notificationController.js');
+const { deleteEvento } = require('../controllers/evento.js');
 const router = express.Router();
 router.put('/:id/approve',protect,authorize('admin'), aprobarEvento);
-router.put('/:id/reject',protect,authorize('admin'), rechazarEvento);
+router.put('/:id/reject',protect,authorize('admin'), deleteEvento);
 router.get('/estudiantes/facultad/:idfacultad',getEstudianteFacultad) ;
 
 router.get('/carreras/:id', protect, getCarreraById);
