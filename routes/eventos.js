@@ -36,9 +36,9 @@ router.get('/dashboard/historical', protect, getHistoricalData);
 //router.get('/listar-pendientes', pendientes); // si necesitas esta ruta
 //router.get('/pendientes',protect, getEventosPendientesPorArea);
 router.put('/:id/approve', aprobarEvento);
-router.put('/:id/reject',rechazarEvento);
+router.put('/:id/reject',deleteEvento);
 router.put('/:id', updateEvento);
-router.delete('/:id', deleteEvento);
+//router.delete('/:id', deleteEvento);
 router.post('/',protect, createEvento);
 router.get('/', getAllEventos);
 router.get('/:id',protect, getEventoById);
