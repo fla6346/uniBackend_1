@@ -983,23 +983,23 @@ const updateEvento = asyncHandler(async (req, res) => {
  });
 
 const deleteEvento = asyncHandler(async (req, res) => {
-  const models = getModels();
-  const Evento = models.Evento;
+  const { id } = req.params;
+  const { razon_rechazo, fecha_rechazo, admin_responsable } = req.body;
+  
   try {
-    const evento = await Evento.findByPk(req.params.id);
-
-    if (!evento) {
-      return res.status(404).json({ message: 'Evento no encontrado' });
-    }
-
-    await evento.destroy();
-    res.status(200).json({ message: 'Evento eliminado exitosamente' });
-
+    await db.query(
+      `UPDATE eventos 
+       SET estado = 'rechazado', 
+           razon_rechazo = $1, 
+           fecha_rechazo = $2,
+           admin_responsable = $3
+       WHERE idevento = $4`,
+      [razon_rechazo, fecha_rechazo, admin_responsable, id]
+    );
+    
+    res.json({ message: 'Razón de rechazo guardada correctamente' });
   } catch (error) {
-    res.status(500).json({ 
-      message: 'Error al eliminar evento',
-      error: error.message 
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 
