@@ -3,6 +3,14 @@ const { getModels } = require('../models/index.js');
 
 const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_evento', estado = 'no_leido' }) => {
   try {
+    // ✅ Si llega un array, enviar una notificación por cada usuario
+    if (Array.isArray(idusuario)) {
+      for (const id of idusuario) {
+        await sendNotification({ idusuario: id, titulo, mensaje, tipo, estado });
+      }
+      return;
+    }
+
     if (!idusuario) {
       console.warn('⚠️ sendNotification: idusuario no proporcionado');
       return;
@@ -27,11 +35,14 @@ const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_even
         type: sequelize.QueryTypes.INSERT
       }
     );
+
+    console.log(`✅ Notificación enviada a usuario ${idusuario}`);
+
   } catch (error) {
     console.error('❗ Error al crear notificación:', error.message);
-    // Error no crítico: no interrumpir el flujo principal
   }
 };
+
 
 const getUserNotifications = asyncHandler(async (req, res) => {
   const models = getModels();

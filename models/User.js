@@ -153,6 +153,10 @@ module.exports = (sequelize,DataTypes) => {
       as: 'notificaciones'
     });
   }
+  User.hasMany(models.Message, {
+    foreignKey: 'idevento',
+    as: 'mensajes'
+  });
 
 }
        return User;

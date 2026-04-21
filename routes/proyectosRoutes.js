@@ -8,7 +8,8 @@ const {
   getEventosAprobados,
   getCarreraById,
   getFacultadById,
-  getEstudianteFacultad
+  getEstudianteFacultad,
+  deleteEvento
 } = require('../controllers/proyectoController.js');
 const {
   sendNotification,
@@ -16,7 +17,7 @@ const {
   markAsRead,
   getUnreadCount
 } = require('../controllers/notificationController.js');
-const { deleteEvento } = require('../controllers/evento.js');
+
 const router = express.Router();
 router.put('/:id/approve',protect,authorize('admin'), aprobarEvento);
 router.put('/:id/reject',protect,authorize('admin'), deleteEvento);

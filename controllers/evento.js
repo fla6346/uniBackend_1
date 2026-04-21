@@ -390,6 +390,7 @@ const createEvento = async (req, res) => {
   }
 };
 const fetchAllEvents = async () => {
+  const { Evento } = getModels();
   try {
     const eventos = await Evento.findAll({
       attributes: ['idevento', 'nombreevento', 'fechaevento', 'horaevento'],
@@ -646,45 +647,92 @@ const updateEvento = asyncHandler(async (req, res) => {
 });
 
 const deleteEvento = asyncHandler(async (req, res) => {
- const { id } = req.params;
-  const { razon_rechazo, fecha_rechazo, admin_responsable } = req.body;
-  
+  let models;
   try {
-    await db.query(
-      `UPDATE eventos 
-       SET estado = 'rechazado', 
-           razon_rechazo = $1, 
-           fecha_rechazo = $2,
-           admin_responsable = $3
-       WHERE idevento = $4`,
-      [razon_rechazo, fecha_rechazo, admin_responsable, id]
+    models = getModels();
+  } catch (e) {
+    return res.status(500).json({ message: 'Servidor no listo' });
+  }
+
+  const { Evento } = models;
+  const sequelize = models.sequelize;
+  const { id } = req.params;
+  const { razon_rechazo } = req.body;
+
+  if (!id) return res.status(400).json({ message: 'ID de evento requerido' });
+
+  const t = await sequelize.transaction();
+  try {
+    const evento = await Evento.findByPk(id, { transaction: t });
+    if (!evento) {
+      await t.rollback();
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // ✅ Usa las columnas exactas que tiene tu tabla
+    await sequelize.query(
+      `UPDATE evento 
+       SET estado = 'rechazado',
+           fecha_rechazo = NOW(),
+           razon_rechazo = ?,
+           updated_at = NOW()
+       WHERE idevento = ?`,
+      { 
+        replacements: [razon_rechazo || null, id], 
+        transaction: t 
+      }
     );
-    
-    res.json({ message: 'Razón de rechazo guardada correctamente' });
+
+    await t.commit();
+    console.log(`✅ Evento ${id} rechazado`);
+
+    res.status(200).json({
+      message: 'Evento rechazado correctamente',
+      idevento: id,
+      estado: 'rechazado'
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  };
+    await t.rollback();
+    console.error('❌ Error al rechazar evento:', error);
+    res.status(500).json({ 
+      message: 'Error al procesar el rechazo', 
+      error: error.message 
+    });
+  }
 });
 
 const fetchEventsWithRawQuery = async () => {
-  const models = getModels();
-  const { Evento } = models;
-  const sequelize = models.sequelize;
+  let models;
   try {
-    console.log('[DB-RAW] Buscando eventos con consulta directa...');
-    const eventos = await Evento.findAll(
-      'SELECT idevento, nombreevento, lugarevento, fechaevento, horaevento FROM evento ORDER BY fechaevento DESC'
-    );
-    console.log(`[DB-RAW] Se encontraron ${eventos.length} eventos.`);
+    models = getModels();
+  } catch (e) {
+    console.warn('[DB] Models aún no listos:', e.message);
+    return [];
+  }
+
+  const { Evento } = models;
+
+  if (!Evento) {
+    console.warn('[DB] Modelo Evento no disponible todavía.');
+    return [];
+  }
+
+  try {
+    console.log('[DB] Buscando eventos con Sequelize...');
+    const eventos = await Evento.findAll({
+      attributes: ['idevento', 'nombreevento', 'lugarevento', 'fechaevento', 'horaevento'],
+      order: [['fechaevento', 'DESC']]
+    });
+    console.log(`[DB] Se encontraron ${eventos.length} eventos.`);
     return eventos;
   } catch (error) {
     console.error('Error in fetchEventsWithRawQuery:', error);
-    throw error;
+    return []; // ← no relanzar, retornar vacío
   }
 };
 
 const getEventos = asyncHandler(async (req, res) => {
-  const sequelize = models.sequelize;
   try {
     const eventos = await fetchEventsWithRawQuery();
     res.status(200).json(eventos);
@@ -714,7 +762,6 @@ const fetchEventById = async (id) =>
 };
 
 const getEventoByIdA = asyncHandler(async (req, res) => {
-  const sequelize = models.sequelize;
   try {
     const evento = await fetchEventById(req.params.id);
     if (evento) res.status(200).json(evento);

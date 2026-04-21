@@ -17,38 +17,14 @@ const initModels = async () => {
   if (_models) return _models;
 
   let sequelize;
- if (process.env.DATABASE_URL) {
-    // Modo producción (Render, Railway, etc.)
-    sequelize = new Sequelize(process.env.DATABASE_URL, {
-      dialect: 'postgres',
-      dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false  // evita error de certificado self-signed
-        }
-      },
-      logging: false,  // o console.log si quieres debug
-      pool: {
-        max: 5,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
-      },
-      quoteIdentifiers: false,
-      define: {
-        timestamps: false,
-        underscored: true
-      }
-    });
-    console.log('✅ Usando DATABASE_URL para conexión (Render mode)');
-  } else {
  
     sequelize = new Sequelize(
       process.env.DB_NAME,
       process.env.DB_USER,
       process.env.DB_PASSWORD,
       {
-        host: process.env.DB_HOST || 'localhost',
+       host: process.env.DB_HOST === 'localhost' ? '127.0.0.1' : (process.env.DB_HOST || '127.0.0.1'),
+            dialectOptions: { ssl: false },
         dialect: 'postgres',
         logging: process.env.NODE_ENV === 'development' ? console.log : false,
         pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
@@ -57,7 +33,7 @@ const initModels = async () => {
       }
     );
     console.log('✅ Conexión local (desarrollo)');
-  }
+  //}
   _sequelize = sequelize;
 
   try {
@@ -109,25 +85,27 @@ const initModels = async () => {
     'Croquis.js',
     'Presupuesto.js',
     'Ingreso.js',
-    'Egreso.js'
+    'Egreso.js',
+    'Message.js'
   ];
 
-  const loadModel = (filename) => {
+const loadModel = (filename) => {
+  try {
     const modelPath = path.join(__dirname, filename);
     if (!fs.existsSync(modelPath)) return null;
     
-    // require() en CommonJS - maneja .default si existe
     const modelDefiner = require(modelPath);
     const definer = modelDefiner.default || modelDefiner;
     
     if (typeof definer === 'function') {
       const model = definer(_sequelize, Sequelize.DataTypes);
-      if (model && model.name) {
-        return model;
-      }
+      return (model && model.name) ? model : null;
     }
-    return null;
-  };
+  } catch (err) {
+    console.error(`❌ Error cargando el modelo ${filename}:`, err.message);
+  }
+  return null;
+};
 
   for (const file of orderedModelFiles) {
     const model = loadModel(file);

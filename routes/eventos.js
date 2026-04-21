@@ -13,6 +13,7 @@ const  {
   getDashboardStats,
   getHistoricalData,
   getEventosAprobadosPorFacultad,
+  getEventosRechazados
  
   //getEventosPendientesPorArea
   } = require('../controllers/proyectoController.js');
@@ -30,6 +31,7 @@ router.get('/aprobados',protect, getEventosAprobados);
 router.get('/aprobados-por-facultad',protect, getEventosAprobadosPorFacultad);
 router.get('/dashboard/stats', protect, getDashboardStats);
 router.get('/dashboard/historical', protect, getHistoricalData);
+router.get('/rechazados',protect, getEventosRechazados);
 //router.get('/details/:id', getEventDetailsById);
 
 

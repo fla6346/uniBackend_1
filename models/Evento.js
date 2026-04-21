@@ -103,12 +103,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       field: 'idlayout'
     },
-   
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      field: 'updated_at'
-    }
+  
   }, {
     tableName: 'evento',
     timestamps: false

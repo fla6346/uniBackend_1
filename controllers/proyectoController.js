@@ -23,251 +23,7 @@ const safeJsonParse = (jsonString, defaultValue = {}) => {
   }
 };
 
-/*const createEvento = async (req, res) => {
-  const t = await sequelize.transaction();
-try {
-   const models = getModels(); 
-    const { Evento, Objetivo, Resultado, Recurso, User, Comite, Segmento, ObjetivoPDI, ClasificacionEstrategica, Argumentacion,Notificacion } = models;
-  
-    const admins = await Usuario.findAll({
-    where: { rol: 'admin' }, // o como identifiques a los admins
-    attributes: ['idusuario']
-  });
-  const data = req.body;
-  const nuevoEvento = await Evento.create({
-    nombreevento: data.nombreevento,
-    lugarevento: data.lugarevento || 'Por definir',
-    fechaevento: data.fechaevento,
-    horaevento: data.horaevento,
-    estado: 'pendiente',
-    fechaAprobacion: null,
-    idclasificacion: data.idclasificacion || null,
-    idresultado: data.idresultado || null,
-    aprobado: false,
-    rechazado: false,
-    idacademico: req.user.idusuario,
-  }, { transaction: t });
 
-  const nuevoEventoId = nuevoEvento.idevento;
-  let todosLosObjetivos = []; // Para segmentos
-
-  if (Array.isArray(data.tipos_de_evento) && data.tipos_de_evento.length > 0) {
-    for (const tipo of data.tipos_de_evento) {
-      if (!tipo.id) {
-        console.warn('Tipo de evento sin ID:', tipo);
-        continue;
-      }
-      await sequelize.query(
-        'INSERT INTO evento_tipos (idevento, idtipoevento, texto_personalizado) VALUES (?, ?, ?)',
-        {
-          replacements: [nuevoEventoId, tipo.id, tipo.texto_personalizado || null],
-          transaction: t
-        }
-      );
-    }
-  }
-
-  if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-    for (const objetivoData of data.objetivos) {
-      if (!objetivoData.id) continue;
-
-      const objetivo = await Objetivo.create({
-        idtipoobjetivo: objetivoData.id,
-        idargumentacion: null,
-        idobjetivopdi: null,
-      }, { transaction: t });
-
-       const idObjCreado = objetivo.idobjetivo || objetivo.id;
-    if (!idObjCreado) {
-      throw new Error(`No se pudo obtener el ID del objetivo creado con idtipoobjetivo=${objetivoData.id}`);
-    }
-     const textoPersonalizado = objetivoData.texto_personalizado?.trim() || null;
-
-      await sequelize.query(
-        'INSERT INTO evento_objetivos (idevento, idobjetivo, texto_personalizado) VALUES (?, ?, ?)',
-        {
-          replacements: [nuevoEventoId, idObjCreado, textoPersonalizado],
-          transaction: t
-        }
-      );
-
-      if (data.argumentacion?.trim() && todosLosObjetivos.length > 0) {
-        const argumentacion = await models.Argumentacion.create({
-          idobjetivo: todosLosObjetivos[0].idobjetivo, // Asignar al primer objetivo
-          texto_argumentacion: data.argumentacion.trim()
-        }, { transaction: t });
-
-        await todosLosObjetivos[0].update({
-          idargumentacion: argumentacion.idargumentacion
-        }, { transaction: t });
-      }
-
-     
-
-      todosLosObjetivos.push(objetivo);
-    }
-  }
-if (data.argumentacion?.trim() && todosLosObjetivos.length > 0) {
-  const argumentacion = await models.Argumentacion.create({
-    idobjetivo: todosLosObjetivos[0].idobjetivo, // Asociar al primer objetivo
-    texto_argumentacion: data.argumentacion.trim()
-  }, { transaction: t });
-  
-  await todosLosObjetivos[0].update({ 
-    idargumentacion: argumentacion.idargumentacion 
-  }, { transaction: t });
-}
-
-
-  // ✅ 4. Procesar segmentos (vinculados a todos los objetivos creados)
-  if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0 && todosLosObjetivos.length > 0) {
-    const segmentosValidos = await Segmento.findAll({ attributes: ['idsegmento'], raw: true });
-    const idsSegmentosValidos = new Set(segmentosValidos.map(seg => seg.idsegmento));
-
-    const segmentosFiltrados = data.segmentos_objetivo
-      .map(seg => ({
-        id: parseInt(seg.id),
-        texto: seg.texto_personalizado || null
-      }))
-      .filter(seg => !isNaN(seg.id) && idsSegmentosValidos.has(seg.id));
-
-    for (const objetivo of todosLosObjetivos) {
-      for (const seg of segmentosFiltrados) {
-        await sequelize.query(
-          'INSERT INTO objetivo_segmento (idobjetivo, idsegmento, texto_personalizado) VALUES (?, ?, ?)',
-          {
-            replacements: [objetivo.idobjetivo, seg.id, seg.texto],
-            transaction: t
-          }
-        );
-      }
-    }
-  }
-
-// ✅ Guardar los 3 objetivos PDI independientes del evento
-if (!Array.isArray(data.pdi_objetivos) || data.pdi_objetivos.length !== 3) {
-  throw new Error('Se requieren exactamente 3 objetivos del PDI');
-}
-
-for (let i = 0; i < 3; i++) {
-  const descripcion = data.pdi_objetivos[i]?.trim();
-  if (!descripcion) {
-    throw new Error(`El objetivo PDI ${i + 1} no puede estar vacío`);
-  }
-
-  await sequelize.query(
-    'INSERT INTO evento_pdi (idevento, descripcion) VALUES (?, ?)',
-    {
-      replacements: [nuevoEventoId, descripcion],
-      transaction: t
-    }
-  );
-}
-  
-
-  // ✅ 6. Guardar resultados esperados
-  let parsedResultados = {};
-  if (data.resultados_esperados) {
-    try {
-      parsedResultados = typeof data.resultados_esperados === 'string'
-        ? JSON.parse(data.resultados_esperados)
-        : data.resultados_esperados;
-    } catch (e) {
-      console.warn('Error al parsear resultados_esperados');
-    }
-  }
-
-  await Resultado.create({
-    idevento: nuevoEventoId,
-    satisfaccion_real:parsedResultados.satisfaccion_real || null,
-    participacion_esperada: parsedResultados.participacion || '',
-    satisfaccion_esperada: parsedResultados.satisfaccion || '',
-    otros_resultados: parsedResultados.otro || null,
-  }, { transaction: t });
-
-  // ✅ 7. Recursos nuevos
-  if (Array.isArray(data.recursos_nuevos) && data.recursos_nuevos.length > 0) {
-    const recursosACrear = data.recursos_nuevos.map(recurso => ({
-      idevento: nuevoEventoId,
-      nombre_recurso: recurso.nombre_recurso,
-      recurso_tipo: recurso.recurso_tipo || 'Material/Técnico/Tercero',
-      habilitado: 1
-    }));
-    await Recurso.bulkCreate(recursosACrear, { transaction: t });
-  }
-
-  // ✅ 8. Recursos existentes (vinculación)
-  if (Array.isArray(data.recursos) && data.recursos.length > 0) {
-    const recursosExistentesACrear = data.recursos.map(recurso => ({
-      idevento: nuevoEventoId,
-      idrecurso: recurso.idrecurso,
-      nombre_recurso: recurso.nombre_recurso,
-    }));
-    await Recurso.bulkCreate(recursosExistentesACrear, { transaction: t });
-  }
-
-  if (Array.isArray(data.comite) && data.comite.length > 0) {
-  const usuariosValidos = await User.findAll({
-    where: {
-      idusuario: data.comite,
-      habilitado: '1'
-    },
-    attributes: ['idusuario']
-  });
-
-  const idsValidos = usuariosValidos.map(u => u.idusuario);
-
-  if (idsValidos.length > 0) {
-   for (const idusuario of idsValidos) {
-      await sequelize.query(
-        'INSERT INTO comite (idevento, idusuario, created_at) VALUES (?, ?, ?)',
-        {
-          replacements: [nuevoEventoId, idusuario, new Date()],
-          transaction: t
-        }
-      );
-
-      await models.Notificacion.create({
-        idusuario: idusuario,
-        tipo: 'evento_asignado',
-        titulo: 'Has sido asignado a un evento',
-        mensaje: `El evento "${nuevoEvento.nombreevento}" te ha asignado como miembro del comité.`,
-        estado: 'pendiente',
-        created_at: new Date(),
-     
-      }, { transaction: t });
-    }
-  }
-}
-  await t.commit();
-
-  const eventoCompleto = await Evento.findByPk(nuevoEventoId, {
-    include: [
-      { model: Resultado, as: 'Resultados' },
-      { model: Recurso, as: 'Recursos' },
-      {
-        model: User,
-        as: 'academicoCreador',
-        attributes: ['nombre', 'apellidopat', 'apellidomat', 'email', 'role']
-      }
-    ]
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Evento creado exitosamente',
-    data: eventoCompleto
-  });
-}catch (error) {
-  await t.rollback();
-  console.error('Error al crear evento:', error);
-  res.status(500).json({
-    success: false,
-    message: 'Error al crear el evento',
-    error: error.message
-  });
-}
-};*/
 const createEvento = async (req, res) => {
   let models;
   try {
@@ -488,12 +244,21 @@ const createEvento = async (req, res) => {
     }
 
     await t.commit();
-    await sendNotification({
-      idusuario: data.comite,
-      titulo: 'Nuevo evento en tu comité',
-      mensaje: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
-      tipo: 'nuevo_evento'
-    });
+    if (Array.isArray(data.comite) && data.comite.length > 0) {
+  for (const idusuario of data.comite) {
+    try {
+      await sendNotification({
+        idusuario: idusuario,   // ← un ID a la vez, no el array completo
+        titulo: 'Nuevo evento en tu comité',
+        mensaje: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
+        tipo: 'nuevo_evento'
+      });
+    } catch (notifError) {
+      // No bloquear si falla la notificación
+      console.warn(`⚠️ No se pudo enviar notificación a usuario ${idusuario}:`, notifError.message);
+    }
+  }
+}
 
     return res.status(201).json({
       message: 'Evento creado exitosamente',
@@ -553,6 +318,93 @@ const fetchAllEvents = async () => {
   }
 };
 
+const getEventosRechazados = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { Evento, User, Academico, Facultad } = models;
+  
+  try {
+    const userId = req.user.idusuario;
+    const userRole = req.user.role;
+    let eventos = [];
+    
+    if (userRole === 'admin' || userRole === 'daf') {
+      eventos = await Evento.findAll({
+        where: { estado: 'rechazado' },
+        distinct: true,
+        attributes: { include: ['idfase', 'razon_rechazo', 'fecha_rechazo'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat', 'email'],
+          include: [{
+            model: Academico,
+            as: 'academico',
+            attributes: ['facultad_id'],
+            include: [{
+              model: Facultad,
+              as: 'facultad',
+              attributes: ['nombre_facultad']
+            }]
+          }]
+        }],
+        order: [['fecha_rechazo', 'DESC']]
+      });
+    } else if (userRole === 'academico') {
+      eventos = await Evento.findAll({
+        where: { 
+          estado: 'rechazado',
+          idacademico: userId 
+        },
+        distinct: true,
+        attributes: { include: ['idfase', 'razon_rechazo', 'fecha_rechazo'] },
+        include: [{
+          model: User,
+          as: 'academicoCreador',
+          attributes: ['idusuario', 'nombre', 'apellidopat', 'apellidomat']
+        }],
+        order: [['fecha_rechazo', 'DESC']]
+      });
+    } else {
+      return res.status(403).json({ message: 'Acceso denegado' });
+    }
+    
+    const eventosFormateados = eventos.map(event => {
+      const creador = event.academicoCreador;
+      const facultadNombre = creador?.academico?.facultad?.nombre_facultad || 'Sin facultad';
+      
+      return {
+        idevento: event.idevento,
+        nombreevento: event.nombreevento || 'Sin título',
+        descripcion: event.descripcion || '',
+        fechaevento: event.fechaevento 
+      ? new Date(event.fechaevento).toISOString()  // Convertir a ISO string
+      : null,
+        horaevento: event.horaevento || 'N/A',
+        lugarevento: event.lugarevento || 'Sin ubicación',
+        estado: event.estado,
+        razon_rechazo: event.razon_rechazo || 'Sin motivo especificado',
+        fecha_rechazo: event.fecha_rechazo ? new Date(event.fecha_rechazo).toLocaleDateString('es-ES') : null,
+        idacademico: event.idacademico,
+        academico: creador ? {
+          id: creador.idusuario,
+          nombre: `${creador.nombre || ''} ${creador.apellidopat || ''}`.trim()
+        } : null,
+        facultad: facultadNombre,
+        created_at: event.created_at,
+        updated_at: event.updated_at
+      };
+    });
+    
+    return res.status(200).json(eventosFormateados);
+    
+  } catch (error) {
+    console.error('❌ Error en getEventosRechazados:', error);
+    return res.status(500).json({ 
+      error: 'Error al cargar eventos rechazados',
+      details: error.message 
+    });
+  }
+});
 const getEventoById = asyncHandler(async (req, res) => {
   const models = getModels();
   const { Evento,Fase,Resultado, User, Comite, Objetivo, ObjetivoPDI, Segmento, Recurso, Actividad, Servicio } = models;
@@ -792,12 +644,12 @@ const getEventoById = asyncHandler(async (req, res) => {
 const updateEvento = asyncHandler(async (req, res) => {
   const models = getModels(); 
   const sequelize = models.sequelize; 
+  const { Evento} = models;
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
     const idevento = parseInt(id, 10);
-     const models = getModels();
-  const { Evento} = models;
+     
 
 
     if (isNaN(idevento) || idevento <= 0) {
@@ -816,7 +668,7 @@ const updateEvento = asyncHandler(async (req, res) => {
     }
      const camposActualizables = [
       'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
-      'responsable', 'idlayout', 'descripcion', 'idacademico', 'idclasificacion'
+      'idlayout', 'descripcion', 'idacademico', 'idclasificacion','idsubcategoria'
     ];
     
     const camposParaActualizar = {};
@@ -826,12 +678,14 @@ const updateEvento = asyncHandler(async (req, res) => {
       }
     }
     
-    if (Object.keys(camposParaActualizar).length > 0) {
-      await Evento.update(camposParaActualizar, {
-        where: { idevento },
-        transaction: t
-      });
-    }
+  if (Object.keys(camposParaActualizar).length > 0) {
+  const setClauses = Object.keys(camposParaActualizar).map(k => `"${k}" = ?`);
+  const values = [...Object.values(camposParaActualizar), idevento];
+  await sequelize.query(
+    `UPDATE evento SET ${setClauses.join(', ')} WHERE idevento = ?`,
+    { replacements: values, transaction: t }
+  );
+}
 
   const TIPO_MAPEO = {
   actividadesPrevias: 'Previa',
@@ -896,35 +750,11 @@ const updateEvento = asyncHandler(async (req, res) => {
       }
     }
 
-    // === 4. ACTUALIZAR AMBIENTES ===
-    /*if (Array.isArray(req.body.ambientes)) {
-      await sequelize.query(
-        'DELETE FROM ambiente WHERE idevento = ?',
-        { replacements: [idevento], transaction: t }
-      );
-      
-      for (const amb of req.body.ambientes) {
-        await sequelize.query(
-          `INSERT INTO ambiente (idevento, nombre, requisito, observaciones)
-           VALUES (?, ?, ?, ?)`,
-          {
-            replacements: [
-              idevento,
-              amb.nombre?.trim() || '',
-              amb.requisito?.trim() || '',
-              amb.observaciones?.trim() || ''
-            ],
-            transaction: t
-          }
-        );
-      }
-    }*/
+   
 
     if (req.body.nuevaFase) {
       const { nrofase } = req.body.nuevaFase;
-      const models = getModels();
-      const { Fase } = models;
-
+    
        const [faseRow] = await sequelize.query(
     'SELECT idfase, nrofase FROM fase WHERE nrofase = ? LIMIT 1',
     { 
@@ -983,26 +813,60 @@ const updateEvento = asyncHandler(async (req, res) => {
  });
 
 const deleteEvento = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { razon_rechazo, fecha_rechazo, admin_responsable } = req.body;
-  
+  let models;
   try {
-    await db.query(
-      `UPDATE eventos 
-       SET estado = 'rechazado', 
-           razon_rechazo = $1, 
-           fecha_rechazo = $2,
-           admin_responsable = $3
-       WHERE idevento = $4`,
-      [razon_rechazo, fecha_rechazo, admin_responsable, id]
+    models = getModels();
+  } catch (e) {
+    return res.status(500).json({ message: 'Servidor no listo' });
+  }
+
+  const { Evento } = models;
+  const sequelize = models.sequelize;
+  const { id } = req.params;
+  const { razon_rechazo } = req.body;
+
+  if (!id) return res.status(400).json({ message: 'ID de evento requerido' });
+
+  const t = await sequelize.transaction();
+  try {
+    const evento = await Evento.findByPk(id, { transaction: t });
+    if (!evento) {
+      await t.rollback();
+      return res.status(404).json({ message: 'Evento no encontrado' });
+    }
+
+    // ✅ Usa las columnas exactas que tiene tu tabla
+    await sequelize.query(
+      `UPDATE evento 
+       SET estado = 'rechazado',
+           fecha_rechazo = NOW(),
+           razon_rechazo = ?,
+           updated_at = NOW()
+       WHERE idevento = ?`,
+      { 
+        replacements: [razon_rechazo || null, id], 
+        transaction: t 
+      }
     );
-    
-    res.json({ message: 'Razón de rechazo guardada correctamente' });
+
+    await t.commit();
+    console.log(`✅ Evento ${id} rechazado`);
+
+    res.status(200).json({
+      message: 'Evento rechazado correctamente',
+      idevento: id,
+      estado: 'rechazado'
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    await t.rollback();
+    console.error('❌ Error al rechazar evento:', error);
+    res.status(500).json({ 
+      message: 'Error al procesar el rechazo', 
+      error: error.message 
+    });
   }
 });
-
 const aprobarEvento = async (req, res) => {
   const { id } = req.params;
   try {
@@ -1541,6 +1405,7 @@ const getEventosNoAprobados = async (req, res) => {
 };
   
 
+  
 const getDashboardStats = asyncHandler(async (req, res) => {
   const models = getModels();
   const sequelize = models.sequelize;
@@ -1928,6 +1793,7 @@ module.exports ={
     getEventosAprobados,
     getEventosAprobadosPorFacultad,
     getEventosNoAprobados,
+    getEventosRechazados,
     getDashboardStats,
     getHistoricalData,
     getEventoCompletoById,

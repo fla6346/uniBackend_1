@@ -3,7 +3,7 @@ const  { Op, where } = require('sequelize');
 const  bcrypt = require('bcryptjs'); 
 const  asyncHandler = require('express-async-handler'); 
 const  jwt = require('jsonwebtoken');
-const { get } = require('../routes/eventRoutesNO');
+
 
 const createUser = asyncHandler(async (req, res) => {
   const models = getModels();
@@ -693,6 +693,22 @@ try{
 }
 
 });
+const getUserByEmail = asyncHandler(async (req, res) => {
+  const models = getModels();
+  const { User } = models;
+  const { email } = req.params;
+
+  const user = await User.findOne({ 
+    where: { email },
+    attributes: ['idusuario', 'nombre', 'telegram_chat_id'] 
+  });
+
+  if (!user) {
+    return res.status(404).json({ message: 'Usuario no encontrado' });
+  }
+
+  res.status(200).json(user);
+});
 module.exports = {
   createUser,
   getAllUsers,  
@@ -708,5 +724,6 @@ module.exports = {
   getProfile,
   getFacultades,
   getCarrera,
-  getUserProfile
+  getUserProfile,
+  getUserByEmail
 };
