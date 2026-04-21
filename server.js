@@ -60,7 +60,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(FRONTEND_PATH));
+if (frontendExists) app.use(express.static(FRONTEND_PATH));
 
 
 
@@ -74,12 +74,15 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ==========================================
 // RUTAS FRONTEND (HTML)
 // ==========================================
-app.get('/', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'index.html')));
-app.get('/Login', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'Login.html')));
-app.get('/Home', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'Home.html')));
-app.get('/HomeAdministrador', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'HomeAdministrador.html')));
-app.get('/chatbot', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'chatbot.html')));
-
+if (frontendExists) {
+  app.get('/', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'index.html')));
+  app.get('/Login', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'Login.html')));
+  app.get('/Home', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'Home.html')));
+  app.get('/HomeAdministrador', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'HomeAdministrador.html')));
+  app.get('/chatbot', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'chatbot.html')));
+} else {
+  app.get('/', (req, res) => res.json({ status: '✅ API online', servidor: 'Railway' }));
+}
 // ==========================================
 // INICIALIZACIÓN PRINCIPAL
 // ==========================================
