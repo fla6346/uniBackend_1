@@ -18,21 +18,34 @@ const initModels = async () => {
 
   let sequelize;
  
-    sequelize = new Sequelize(
-      process.env.DB_NAME,
-      process.env.DB_USER,
-      process.env.DB_PASSWORD,
-      {
-       host: process.env.DB_HOST === 'localhost' ? '127.0.0.1' : (process.env.DB_HOST || '127.0.0.1'),
-            dialectOptions: { ssl: false },
-        dialect: 'postgres',
-        logging: process.env.NODE_ENV === 'development' ? console.log : false,
-        pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
-        quoteIdentifiers: false,
-        define: { timestamps: false, underscored: true }
-      }
-    );
-    console.log('✅ Conexión local (desarrollo)');
+   // ✅ DESPUÉS - Usa DATABASE_URL si existe (Railway), si no usa variables individuales
+if (process.env.DATABASE_URL) {
+  console.log('✅ Usando DATABASE_URL (Railway)');
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    dialectOptions: { ssl: { require: true, rejectUnauthorized: false } },
+    logging: false,
+    pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+    quoteIdentifiers: false,
+    define: { timestamps: false, underscored: true }
+  });
+} else {
+  console.log('✅ Conexión local (desarrollo)');
+  sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
+    {
+      host: process.env.DB_HOST || '127.0.0.1',
+      dialect: 'postgres',
+      dialectOptions: { ssl: false },
+      logging: false,
+      pool: { max: 5, min: 0, acquire: 30000, idle: 10000 },
+      quoteIdentifiers: false,
+      define: { timestamps: false, underscored: true }
+    }
+  );
+}
   //}
   _sequelize = sequelize;
 
