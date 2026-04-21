@@ -12,8 +12,12 @@ console.log('🔍 [DEBUG] DB_HOST:', process.env.DB_HOST);
 console.log('🔍 [DEBUG] DB_NAME:', process.env.DB_NAME);
 console.log('🔍 [DEBUG] PORT:', PORT);
 
-const FRONTEND_PATH = path.join(__dirname, '../public_html/frontendEvento.cidtec-uc.com');
-console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH);
+/*const FRONTEND_PATH = path.join(__dirname, '../public_html/frontendEvento.cidtec-uc.com');
+console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH);*/
+const fs = require('fs');
+const FRONTEND_PATH = process.env.FRONTEND_PATH || path.join(__dirname, '../public_html/frontendEvento.cidtec-uc.com');
+const frontendExists = fs.existsSync(FRONTEND_PATH);
+console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH, '| Existe:', frontendExists);
 
 app.use(cors({
   origin: function(origin, callback) {
