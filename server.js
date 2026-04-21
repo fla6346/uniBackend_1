@@ -17,14 +17,21 @@ console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH);
 
 app.use(cors({
   origin: function(origin, callback) {
-    const allowed = [
+    /*const allowed = [
       'http://evento.cidtec-uc.com',
       'https://evento.cidtec-uc.com',
       'http://cidtec-uc.com',
       'https://cidtec-uc.com',
       'http://localhost:3000',
       'http://localhost:8081',
-    ];
+    ];*/
+    const allowed = [
+  'https://unibackend1-production.up.railway.app',
+  'https://unifrontend-production.up.railway.app', // si tu frontend también está en Railway
+  'http://localhost:3000',
+  'http://localhost:8081',
+  'http://localhost:19006', // Expo web
+];
     if (!origin || allowed.includes(origin)) {
       callback(null, true);
     } else {
