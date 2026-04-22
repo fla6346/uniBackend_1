@@ -22,7 +22,7 @@ module.exports = (sequelize,DataTypes) => {
       allowNull: true
     },
     habilitado: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BOOLEAN,
       defaultValue: 1
     }
 },
