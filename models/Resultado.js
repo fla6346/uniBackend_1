@@ -25,7 +25,7 @@ module.exports = (sequelize,DataTypes) => {
      field: 'otros_resultados',
    },
    participacion_esperada: {
-     type: DataTypes.INTEGER,
+     type: DataTypes.STRING,
      allowNull: false,
    },
     satisfaccion_esperada: {
