@@ -41,7 +41,7 @@ module.exports = (sequelize,DataTypes)=>{
       allowNull: true,
       references: {
         model: 'carrera',
-        key: 'carrera_id'
+        key: 'idcarrera'
       }
     }
   }, {
