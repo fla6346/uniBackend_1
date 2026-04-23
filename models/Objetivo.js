@@ -19,7 +19,7 @@ module.exports = (sequelize,DataTypes) => {
     },
     idtipoobjetivo: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       field: 'idtipoobjetivo',
       references: { model: 'tipo_objetivo', key: 'idtipoobjetivo' }
 
