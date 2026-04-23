@@ -40,7 +40,7 @@ module.exports = (sequelize,DataTypes)=>{
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'carreras',
+        model: 'carrera',
         key: 'carrera_id'
       }
     }
