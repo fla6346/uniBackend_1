@@ -23,7 +23,7 @@ module.exports = (sequelize,DataTypes) => {
     habilitado: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: 1,
+      defaultValue: true,
       field: 'habilitado',
     },
     nombre: {
