@@ -8,7 +8,7 @@ module.exports = (sequelize,DataTypes) => {
     },
     idevento: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'evento',
         key: 'idevento',
