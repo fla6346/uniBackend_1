@@ -7,8 +7,19 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true
     },
-    idusuario: DataTypes.INTEGER,
-    // ... otros campos que tengas
+   idusuario: { 
+         type: DataTypes.INTEGER,
+         allowNull: false,
+         unique: true,
+         references:{
+           model:User,
+           key:'idusuario'
+         }
+       },
+       nivelAcceso: {
+         type: DataTypes.INTEGER,
+         defaultValue: 1
+       },
   }, {
     tableName: 'administrador',
     timestamps: false
