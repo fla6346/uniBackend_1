@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true
     },
     plataforma: {
-      type: DataTypes.ENUM('app', 'telegram', 'whatsapp'),
+      type: DataTypes.STRING,
       allowNull: false
     },
     external_id: {
@@ -18,7 +18,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     direction: {
-      type: DataTypes.ENUM('inbound', 'outbound'),
+      type: DataTypes.STRING,
       comment: 'inbound: usuario -> bot, outbound: bot -> usuario'
     }
   }, {
