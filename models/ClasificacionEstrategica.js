@@ -6,7 +6,8 @@ const Clasificacion = sequelize.define('ClasificacionEstrategica', {
   idClasificacion: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-    autoIncrement: true
+    autoIncrement: true,
+    field: 'idclasificacion'
   },
   nombreClasificacion: {
     type: DataTypes.STRING(100),

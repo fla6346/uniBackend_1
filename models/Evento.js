@@ -112,6 +112,7 @@ module.exports = (sequelize, DataTypes) => {
   Evento.associate = function(models) {
     Evento.belongsTo(models.ClasificacionEstrategica, {
       foreignKey: 'idclasificacion',
+      targetKey: 'idClasificacion',
       as: 'clasificacion'
     });
     Evento.belongsTo(models.User, {
