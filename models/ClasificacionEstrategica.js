@@ -17,7 +17,7 @@ const Clasificacion = sequelize.define('ClasificacionEstrategica', {
     allowNull: false
   }
 }, {
-  tableName: 'clasificacionEstrategica',
+  tableName: 'clasificacion_estrategica',
   timestamps: false 
 });
   Clasificacion.associate = (models) => {
