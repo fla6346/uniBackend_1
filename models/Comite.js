@@ -2,21 +2,12 @@ const { DataTypes } = require('sequelize');
 
 module.exports = function(sequelize, DataTypes) {
   const Comite = sequelize.define('Comite', {
-   idevento: {
+  idcomite: {
   type: DataTypes.INTEGER,
-  references: {
-        model: 'Evento',
-        key: 'idevento'
-      }
+  primaryKey: true,
+  autoIncrement: true
 },
-idusuario: {
-  type: DataTypes.INTEGER,
-  field: 'idusuario',
-   references: {
-        model: 'User',
-        key: 'idusuario'
-      }
-},
+  
 created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
