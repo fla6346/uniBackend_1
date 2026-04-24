@@ -96,6 +96,7 @@ module.exports = (sequelize,DataTypes) => {
   {
     tableName: 'usuario',
     timestamps: false,
+    underscored: true,
     hooks: {
       beforeCreate: async (user) => {
         if (user.contrasenia && (user.isNewRecord || user.changed('contrasenia'))) {

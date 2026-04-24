@@ -146,16 +146,16 @@ const getMensualStats = asyncHandler(async (req, res) => {
 
     const result = await Evento.sequelize.query(
       `
-        SELECT 
-          TO_CHAR("created_at", 'YYYY-MM') AS mes,
-          COUNT(*)::INTEGER AS totalEvents,
-          COUNT(*) FILTER (WHERE "estado" = 'aprobado')::INTEGER AS aprobado,
-          COUNT(*) FILTER (WHERE "estado" = 'pendiente')::INTEGER AS pendiente,
-          COUNT(*) FILTER (WHERE "estado" = 'rechazado')::INTEGER AS rechazado
-        FROM "evento"
-        WHERE "created_at" IS NOT NULL
-        GROUP BY TO_CHAR("created_at", 'YYYY-MM')
-        ORDER BY mes DESC;
+       SELECT 
+    TO_CHAR("fechaevento", 'YYYY-MM') AS mes, 
+    COUNT(*) FILTER (WHERE "estado" = 'aprobado')::INTEGER AS aprobado,
+    COUNT(*) FILTER (WHERE "estado" = 'pendiente')::INTEGER AS pendiente,
+    COUNT(*) FILTER (WHERE "estado" = 'rechazado')::INTEGER AS rechazado,
+    COUNT(*) AS totalEvents
+  FROM "evento"
+  WHERE "fechaevento" IS NOT NULL            
+  GROUP BY TO_CHAR("fechaevento", 'YYYY-MM') 
+  ORDER BY mes DESC;
       `,
       { type: Evento.sequelize.QueryTypes.SELECT }
     );
