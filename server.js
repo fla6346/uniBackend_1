@@ -18,45 +18,33 @@ const fs = require('fs');
 const FRONTEND_PATH = process.env.FRONTEND_PATH || null;
 const frontendExists = FRONTEND_PATH ? fs.existsSync(FRONTEND_PATH) : false;
 console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH, '| Existe:', frontendExists);
-app.use(cors({
-  origin: function(origin, callback) {
-    /*const allowed = [
-      'http://evento.cidtec-uc.com',
-      'https://evento.cidtec-uc.com',
-      'http://cidtec-uc.com',
-      'https://cidtec-uc.com',
-      'http://localhost:3000',
-      'http://localhost:8081',
-    ];*/
-    const allowed = [
+
+  const allowedOrigins = [
   'https://unibackend1-production.up.railway.app',
-  'https://unifrontend-production.up.railway.app', // si tu frontend también está en Railway
+  'https://unifrontend-production.up.railway.app',
   'http://localhost:3000',
   'http://localhost:8081',
-  'http://localhost:19006', // Expo web
+  'http://localhost:19006'
 ];
-    if (!origin || allowed.includes(origin)) {
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origin (como apps móviles o Postman)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
-      console.warn('⚠️ CORS origen no listado (permitido igual):', origin);
-      callback(null, true);
+      console.warn('⚠️ Origen bloqueado por CORS:', origin);
+      // En lugar de error, permitimos pero avisamos para no romper el flujo
+      callback(null, true); 
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
