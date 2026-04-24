@@ -141,67 +141,45 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
   try {
     const models = getModels();
     const { idusuario } = req.user;
-
-    if (!idusuario) {
-      return res.status(401).json({ error: 'Usuario no identificado' });
-    }
-
     const { Evento, Academico } = models;
 
-    const academicos = await Academico.findAll({
-      where: { idusuario }
-    });
-
+    const academicos = await Academico.findAll({ where: { idusuario } });
     if (!academicos || academicos.length === 0) {
       return res.status(403).json({ error: 'No tienes perfil de académico registrado.' });
     }
 
     const idsAcademico = academicos.map(a => a.idacademico);
 
-    const totalEvents = await Evento.count({
+    const totalEvents = await Evento.count({ where: { idacademico: idsAcademico } });
+
+    // Cambiamos created_at por fechaevento aquí también
+    const eventos = await Evento.findAll({
+      attributes: ['estado', 'fechaevento'], 
       where: { idacademico: idsAcademico }
     });
 
-    const eventosPorEstado = await Evento.findAll({
-      attributes: ['estado'],
-      where: { idacademico: idsAcademico }
-    });
+    const estadoCounts = eventos.reduce((acc, ev) => {
+      const estado = ev.estado || 'sin_estado';
+      acc[estado] = (acc[estado] || 0) + 1;
+      return acc;
+    }, {});
 
-    const estadoCounts = {};
-    eventosPorEstado.forEach(evento => {
-      const estado = evento.estado || 'sin_estado';
-      estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
-    });
+    const ahora = new Date();
+    const primerDiaDelMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
 
-    const primerDiaDelMes = new Date();
-    primerDiaDelMes.setDate(1);
-    primerDiaDelMes.setHours(0, 0, 0, 0);
-
-    const eventosAprobadosMes = eventosPorEstado.filter(evento => {
-      const fechaEvento = new Date(evento.created_at);
-      return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
+    const eventosAprobadosMes = eventos.filter(ev => {
+      const fecha = new Date(ev.fechaevento); // <--- Uso de fechaevento
+      return ev.estado === 'aprobado' && fecha >= primerDiaDelMes;
     }).length;
 
-    const eventosAprobados = estadoCounts.aprobado || 0;
-    const tasaAprobacion = totalEvents > 0 
-      ? Math.round((eventosAprobados / totalEvents) * 100) 
-      : 0;
-
-    const stats = {
+    res.status(200).json({
       totalEvents,
       estadoCounts,
       eventosAprobadosMes,
-      tasaAprobacion,
-    };
-
-    res.status(200).json(stats);
-    
-  } catch (error) {
-    console.error('❌ Error en getMyDashboardStats:', error);
-    res.status(500).json({ 
-      error: 'Error al cargar tus estadísticas',
-      message: error.message 
+      tasaAprobacion: totalEvents > 0 ? Math.round(((estadoCounts.aprobado || 0) / totalEvents) * 100) : 0,
     });
+  } catch (error) {
+    res.status(500).json({ error: 'Error en estadísticas personales', message: error.message });
   }
 });
 
@@ -210,115 +188,64 @@ const getMyHistoricalData = asyncHandler(async (req, res) => {
     const models = getModels();
     const { Evento, Academico } = models;
     const { idusuario } = req.user;
- 
+
     const academicos = await Academico.findAll({ where: { idusuario } });
-    if (!academicos || academicos.length === 0) {
-      return res.status(200).json({ historical: [] });
-    }
+    if (!academicos || academicos.length === 0) return res.status(200).json({ historical: [] });
+    
     const idsAcademico = academicos.map(a => a.idacademico);
- 
     const now = new Date();
     const historical = [];
- 
+
     for (let i = 5; i >= 0; i--) {
       const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const name = start.toLocaleString('es-ES', { month: 'short', year: '2-digit' });
- 
+      const name = start.toLocaleString('es-ES', { month: 'short' });
+
       const eventos = await Evento.count({
         where: {
           idacademico: idsAcademico,
-          created_at: { [Op.gte]: start, [Op.lt]: end }
+          fechaevento: { [Op.gte]: start, [Op.lt]: end } // <--- Cambio a fechaevento
         }
       });
- 
       historical.push({ name, eventos });
     }
- 
     res.status(200).json({ historical });
   } catch (error) {
-    console.error('❌ getMyHistoricalData:', error);
-    res.status(500).json({ error: 'Error al cargar datos históricos', message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
+
 const getMyCommitteeEvents = asyncHandler(async (req, res) => {
   try {
-
-    if (!req.user || !req.user.idusuario) {
-      console.error('❌ [getMyCommitteeEvents] Usuario no autenticado o req.user faltante');
-      return res.status(401).json({ 
-        error: 'No autorizado. Por favor inicia sesión nuevamente.',
-        debug: { hasUser: !!req.user, user: req.user }
-      });
-    }
+    if (!req.user?.idusuario) return res.status(401).json({ error: 'No autorizado' });
 
     const { idusuario } = req.user;
-    const models = getModels();
-    const { sequelize } = models;
-    const { Op } = require('sequelize');
+    const { sequelize, Evento } = getModels();
 
-    // --- NUEVO: Calcular fecha límite (hace 1 mes) ---
     const DIAS_A_MOSTRAR = 30; 
     const fechaLimite = new Date();
     fechaLimite.setDate(fechaLimite.getDate() - DIAS_A_MOSTRAR);
-    console.log(`🔍 [getMyCommitteeEvents] Buscando eventos del comité desde: ${fechaLimite.toISOString()}`);
-    // -------------------------------------------------
 
-    try {
-      const tableCheck = await sequelize.query(
-        `SELECT column_name FROM information_schema.columns 
-         WHERE table_schema = 'public' AND table_name = 'comite'`,
-        { type: sequelize.QueryTypes.SELECT }
-      );
-      console.log('📋 [getMyCommitteeEvents] Columnas en tabla comite:', tableCheck.map(c => c.column_name));
-    } catch (checkError) {
-      console.warn('⚠️ No se pudo verificar estructura de tabla:', checkError.message);
-    }
-
-    // 1. Obtener registros del comité (asignaciones)
+    // En la tabla 'comite', confirmamos que la columna es created_at con guion bajo
     const committeeRecords = await sequelize.query(
-      `SELECT idevento, "created_at" as "created_at" 
-       FROM public.comite 
-       WHERE idusuario = :idusuario`,
-      {
-        replacements: { idusuario: idusuario },
-        type: sequelize.QueryTypes.SELECT
-      }
+      `SELECT idevento, "created_at" FROM public.comite WHERE idusuario = :idusuario`,
+      { replacements: { idusuario }, type: sequelize.QueryTypes.SELECT }
     );
 
-    if (committeeRecords.length === 0) {
-      console.log('ℹ️ [getMyCommitteeEvents] Usuario no está en ningún comité');
-      return res.status(200).json({ events: [] });
-    }
+    if (committeeRecords.length === 0) return res.status(200).json({ events: [] });
 
     const eventoIds = committeeRecords.map(record => record.idevento);
 
-    const { Evento } = models;
-    
-    // 2. Obtener eventos con FILTRO DE FECHA
+    // Ajustamos el findAll para usar fechaevento como filtro
     const events = await Evento.findAll({
       where: { 
         idevento: eventoIds,
-        // --- NUEVO: Filtrar eventos creados en el último mes ---
-        created_at: { [Op.gte]: fechaLimite }
+        fechaevento: { [Op.gte]: fechaLimite } // <--- Cambio a fechaevento
       },
-      attributes: [
-        'idevento',
-        'nombreevento',
-        'descripcion',
-        'fechaevento',
-        'estado',
-        'created_at'
-      ],
-      order: [['created_at', 'DESC']]
+      attributes: ['idevento', 'nombreevento', 'descripcion', 'fechaevento', 'estado'],
+      order: [['fechaevento', 'DESC']] // <--- Ordenar por fechaevento
     });
 
-    console.log(`🔍 [getMyCommitteeEvents] Eventos encontrados: ${events.length}`);
-    if(events.length > 0) {
-        console.log(`🔍 [getMyCommitteeEvents] El evento más antiguo retornado tiene fecha: ${events[events.length-1].created_at}`);
-    }
-
-    // 3. Mapear fecha de asignación al comité
     const eventsWithAssignment = events.map(event => {
       const assignment = committeeRecords.find(r => r.idevento === event.idevento);
       return {
@@ -329,26 +256,8 @@ const getMyCommitteeEvents = asyncHandler(async (req, res) => {
     });
 
     res.status(200).json({ events: eventsWithAssignment });
-    
   } catch (error) {
-    console.error('❌ [getMyCommitteeEvents] Error:', {
-      message: error.message,
-      stack: error.stack,
-      type: error.name
-    });
-    
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        error: 'Token inválido o expirado',
-        message: error.message 
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Error al cargar tus eventos como comité',
-      message: error.message,
-      debug: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    res.status(500).json({ error: error.message });
   }
 });
 const myEvent= asyncHandler(async (req, res) => {
