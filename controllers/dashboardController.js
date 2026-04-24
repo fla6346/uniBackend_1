@@ -15,7 +15,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     const ahora = new Date();
     const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
     const [resultadoNuevos] = await sequelize.query(
-      `SELECT COUNT(*) as total FROM usuario WHERE "createdAt" >= :inicioMes`, 
+      `SELECT COUNT(*) as total FROM usuario WHERE "created_at" >= :inicioMes`, 
       { replacements: { inicioMes }, type: sequelize.QueryTypes.SELECT }
     );
     const usuariosNuevosEsteMes = parseInt(resultadoNuevos?.total || 0);
