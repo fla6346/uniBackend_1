@@ -19,7 +19,8 @@ created_at: {
 
   Comite.associate = (models) => {
    Comite.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
-    Comite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'miembroComite' });
+   Comite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'miembroComite' });
+   Comite.belongToMany(models.Academico{ foreignKey: 'idComite', through: 'ComiteUsuarios'})
   };
 
   return Comite;
