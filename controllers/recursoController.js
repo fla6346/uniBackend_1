@@ -8,7 +8,7 @@ const createRecurso = asyncHandler(async (req, res) => {
   const { Recurso } = models;
    console.log('📦 Modelo Recurso:', Recurso ? 'OK' : 'NULL');
 
-  const { nombre_recurso, recurso_tipo, descripcion, habilitado = 1 } = req.body;
+  const { nombre_recurso, recurso_tipo, descripcion, habilitado = true } = req.body;
 
   
   if (!nombre_recurso || !recurso_tipo) {
@@ -21,7 +21,7 @@ const createRecurso = asyncHandler(async (req, res) => {
     nombre_recurso,
     recurso_tipo,
     descripcion: descripcion || null,
-    habilitado: habilitado !== undefined ? habilitado : 1
+    habilitado: habilitado !== undefined ? habilitado : true
   });
 
   res.status(201).json({
