@@ -28,18 +28,7 @@ console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH, '| Existe:', frontendE
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir peticiones sin origin (como apps móviles o Postman)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      console.warn('⚠️ Origen bloqueado por CORS:', origin);
-      // En lugar de error, permitimos pero avisamos para no romper el flujo
-      callback(null, true); 
-    }
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']

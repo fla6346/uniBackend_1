@@ -142,52 +142,35 @@ const getCarrera= asyncHandler(async (req,res)=>{
   }
 });
 const getUserProfile = asyncHandler(async (req, res) => {
-
   try {
-    const userId = req.user.id; // ID del usuario autenticado desde el middleware
-    
-    // Query con JOIN para obtener el nombre de la facultad
-    const query = `
-      SELECT 
-        u.id, 
-        u.nombre, 
-        u.apellidopat, 
-        u.apellidomat, 
-        u.email,
-        u.role,
-        u.facultad_id,
-        f.nombre_facultad as facultad
-      FROM usuarios u
-      LEFT JOIN facultad f ON u.facultad_id = f.id
-      WHERE u.id = ?
-    `;
-    
-    // Ajusta según tu configuración de base de datos
-    const [rows] = await pool.query(query, [userId]);
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-    
-    const user = rows[0];
-    
+    // Usar idusuario que es tu PK real
+    const userId = req.user.idusuario; 
+    const models = getModels();
+    const { User, Facultad } = models;
+
+    const user = await User.findByPk(userId, {
+      include: [{
+        model: Facultad,
+        as: 'facultad', // Asegúrate de que este alias esté en tu index.js
+        attributes: ['nombre_facultad']
+      }],
+      attributes: { exclude: ['contrasenia'] }
+    });
+
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
     res.json({
-      id: user.id,
+      id: user.idusuario,
       nombre: user.nombre,
       apellidopat: user.apellidopat,
       apellidomat: user.apellidomat,
       email: user.email,
       role: user.role,
-      facultad: user.facultad || 'Sin facultad',
+      facultad: user.facultad?.nombre_facultad || 'Sin facultad',
       facultad_id: user.facultad_id
     });
-    
   } catch (error) {
-    console.error('Error al obtener perfil:', error);
-    res.status(500).json({ 
-      message: 'Error al obtener el perfil del usuario',
-      error: error.message 
-    });
+    res.status(500).json({ message: 'Error al obtener perfil', error: error.message });
   }
 });
 const getUserById = asyncHandler(async (req, res) => {
