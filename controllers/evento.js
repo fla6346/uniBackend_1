@@ -675,7 +675,6 @@ const deleteEvento = asyncHandler(async (req, res) => {
        SET estado = 'rechazado',
            fecha_rechazo = NOW(),
            razon_rechazo = ?,
-           updated_at = NOW()
        WHERE idevento = ?`,
       { 
         replacements: [razon_rechazo || null, id], 
