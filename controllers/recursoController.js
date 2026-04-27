@@ -40,7 +40,7 @@ const getRecursos = asyncHandler(async (req, res) => {
   const { Recurso } = models;
 
   const recursos = await Recurso.findAll({
-    where: { habilitado: 1 },
+    where: { habilitado: true },
     attributes: ['idrecurso', 'nombre_recurso', 'recurso_tipo', 'descripcion']
   });
   res.json({ recursos });
