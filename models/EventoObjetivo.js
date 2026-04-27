@@ -17,10 +17,7 @@ const EventoObjetivo = sequelize.define('EventoObjetivo', {
       key: 'idobjetivo'
     }
   },
-  texto_personalizado: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
+ 
 }, {
   tableName: 'evento_objetivos',
   timestamps: false,

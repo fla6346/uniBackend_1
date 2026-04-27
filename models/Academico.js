@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
     underscored: true
   });
 
-  Academico.associate = (models) => {
+  Academico.associate = function(models) {
     Academico.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
     Academico.belongsTo(models.Facultad, { foreignKey: 'facultad_id', as: 'facultad' });
     Academico.belongsTo(models.Carrera, { foreignKey: 'idcarrera', as: 'carrera' });
