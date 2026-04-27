@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 
 module.exports = function(sequelize, DataTypes) {
-  const Comite = sequelize.define('comite', {
+  const Comite = sequelize.define('Comite', {
   idcomite: {
   type: DataTypes.INTEGER,
   primaryKey: true,
@@ -19,7 +19,7 @@ module.exports = function(sequelize, DataTypes) {
   Comite.associate = function(models) {
    Comite.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
    Comite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'miembroComite' });
-   Comite.belongToMany(models.Academico,{ foreignKey: 'idComite', through: 'ComiteUsuarios'});
+   Comite.belongsToMany(models.Academico,{ foreignKey: 'idComite', through: 'ComiteUsuarios'});
   };
 
   return Comite;
