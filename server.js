@@ -28,7 +28,8 @@ console.log('🔍 [DEBUG] FRONTEND_PATH:', FRONTEND_PATH, '| Existe:', frontendE
 ];
 
 app.use(cors({
-  origin: true,
+  origin: 'https://unifrontend-production.up.railway.app',
+  //true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
