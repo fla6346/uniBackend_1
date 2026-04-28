@@ -1787,7 +1787,6 @@ module.exports ={
     deleteEvento,
     aprobarEvento,
     rechazarEvento,
-    getEventos,
     fetchEventById,
     getEventosAprobados,
     getEventosAprobadosPorFacultad,
