@@ -10,12 +10,12 @@ module.exports = (sequelize,DataTypes) =>{
     idevento: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      // references: { model: 'eventos', key: 'idevento' }
+      references: { model: 'evento', key: 'idevento' }
     },
     idusuario: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      // references: { model: 'users', key: 'idusuario' }
+      references: { model: 'user', key: 'idusuario' }
     },
     rol_comite: {
       type: DataTypes.STRING(50),
@@ -48,6 +48,7 @@ module.exports = (sequelize,DataTypes) =>{
     EventoComite.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
     EventoComite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
     EventoComite.hasMany(models.ComiteMensaje, { foreignKey: 'idcomite', as: 'mensajes' });
+    EventoComite.belongsToMany(models.Notificacion, { foreignKey: 'idnotificacion', through: 'ComiteNotificaciones', as: 'notificacion' }); 
   };
 
   return EventoComite;

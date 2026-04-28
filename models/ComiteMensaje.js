@@ -8,8 +8,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     idcomite: {
       type: DataTypes.INTEGER,
-      allowNull: false
-      // references: { model: 'evento_comite', key: 'idcomite' }
+      allowNull: false,
+      references: { model: 'evento_comite', key: 'idcomite' }
     },
     idevento: {
       type: DataTypes.INTEGER,
@@ -25,17 +25,11 @@ module.exports = (sequelize, DataTypes) => {
     },
     tipo: {
       type: DataTypes.STRING(30),
-      defaultValue: 'texto',
-      validate: { isIn: [['texto', 'archivo', 'sistema']] }
+      defaultValue: 'texto'
     },
     archivo_url: {
       type: DataTypes.STRING(500),
       allowNull: true
-    },
-    leido_por: {
-      type: DataTypes.JSONB,
-      defaultValue: [],
-      comment: 'Array de idusuario que ya leyeron el mensaje'
     },
     created_at: {
       type: DataTypes.DATE,
@@ -44,18 +38,23 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'comite_mensajes',
     timestamps: false,
-    freezeTableName: true,
-    indexes: [
-      { fields: ['idevento'] },
-      { fields: ['idusuario_emisor'] },
-      { fields: ['created_at'] }
-    ]
+    freezeTableName: true
   });
 
   ComiteMensaje.associate = (models) => {
-    ComiteMensaje.belongsTo(models.EventoComite, { foreignKey: 'idcomite', as: 'comite' });
-    ComiteMensaje.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
-    ComiteMensaje.belongsTo(models.User, { foreignKey: 'idusuario_emisor', as: 'emisor' });
+    if (models.EventoComite) {
+      ComiteMensaje.belongsTo(models.EventoComite, { foreignKey: 'idcomite', as: 'comite' });
+    }
+    if (models.Evento) {
+      ComiteMensaje.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
+    }
+    if (models.User) {
+      ComiteMensaje.belongsTo(models.User, { foreignKey: 'idusuario_emisor', as: 'emisor' });
+    }
+    // Relación con lecturas
+    if (models.ComiteMensajeLectura) {
+      ComiteMensaje.hasMany(models.ComiteMensajeLectura, { foreignKey: 'idmensaje', as: 'lecturas' });
+    }
   };
 
   return ComiteMensaje;
