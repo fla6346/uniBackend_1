@@ -1,29 +1,54 @@
 const { DataTypes } = require('sequelize');
 module.exports = (sequelize,DataTypes) =>{
-    const comite = sequelize.define('Comite',{
-   
-  idevento: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    field: 'idevento',
-      references: { model: 'evento', key: 'idevento' }
-  },
-  idComite: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    primaryKey: true,
-    field: 'idcomite',
-    references: { model: 'comite', key: 'idcomite' }
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW,
-    field: 'created_at'
-  }
-}, {
-  tableName: 'evento_comite',
-  timestamps: false
-});
-return comite;
-}
+    const Eventocomite = sequelize.define('evento_comite',{
+   idcomite: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+      allowNull: false
+    },
+    idevento: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      // references: { model: 'eventos', key: 'idevento' }
+    },
+    idusuario: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      // references: { model: 'users', key: 'idusuario' }
+    },
+    rol_comite: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: 'miembro'
+    },
+    fecha_asignacion: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    },
+    estado: {
+      type: DataTypes.STRING(20),
+      defaultValue: 'activo',
+      validate: { isIn: [['activo', 'invitado', 'rechazado']] }
+    },
+    texto_personalizado: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    tableName: 'evento_comite',
+    timestamps: false,
+    freezeTableName: true,
+    indexes: [
+      { unique: true, fields: ['idevento', 'idusuario'] }
+    ]
+  });
+
+  EventoComite.associate = (models) => {
+    EventoComite.belongsTo(models.Evento, { foreignKey: 'idevento', as: 'evento' });
+    EventoComite.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
+    EventoComite.hasMany(models.ComiteMensaje, { foreignKey: 'idcomite', as: 'mensajes' });
+  };
+
+  return EventoComite;
+};

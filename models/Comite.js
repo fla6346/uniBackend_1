@@ -7,6 +7,14 @@ module.exports = function(sequelize, DataTypes) {
   primaryKey: true,
   autoIncrement: true
   },
+    idevento: {  
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    idusuario: { 
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
   created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW

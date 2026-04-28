@@ -30,7 +30,25 @@ module.exports = (sequelize,DataTypes) => {
     type: DataTypes.STRING(255),
     allowNull: false
   },
- 
+  id_relacionado: {
+  type: DataTypes.INTEGER,
+  allowNull: true,
+  comment: 'ID del recurso relacionado (evento, mensaje, etc.)'
+},
+tipo: {
+  type: DataTypes.STRING(50),
+  allowNull: true,
+  validate: { 
+    isIn: [
+      ['nuevo_evento', 'evento_aprobado', 'evento_rechazado', 
+       'recordatorio', 'comite_invitacion', 'mensaje_nuevo']
+    ]
+  }
+},
+leido_at: {
+  type: DataTypes.DATE,
+  allowNull: true
+},
   created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW

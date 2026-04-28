@@ -1,5 +1,4 @@
 const { getModels } = require('../models/index');
-const { sequelize } = require('../config/db.js');
 const { Op } = require('sequelize');
 const asyncHandler = require('express-async-handler');
 const { sendNotification } = require('./notificationController.js');
@@ -912,7 +911,7 @@ const rechazarEvento = async (req, res) => {
     return res.status(500).json({ error: 'Error al rechazar el evento' });
   }
 };
-const getEventos = asyncHandler(async (req, res) => {
+/*const getEventos = asyncHandler(async (req, res) => {
   try {
     const eventos = await fetchEventsWithRawQuery();
     res.status(200).json(eventos);
@@ -923,7 +922,7 @@ const getEventos = asyncHandler(async (req, res) => {
       error: error.message 
     });
   }
-});
+});*/
 
 const fetchEventById = async (id) => {
   const models = getModels();
