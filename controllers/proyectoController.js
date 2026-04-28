@@ -59,6 +59,8 @@ const createEvento = async (req, res) => {
       idacademico: req.user.idusuario,
       idclasificacion: data.idclasificacion || null,
       idsubcategoria: data.idsubcategoria || null,
+      idfase:'1',
+      estado: 'pendiente',
     }, { transaction: t });
 
     const nuevoEventoId = nuevoEvento.idevento;
