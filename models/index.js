@@ -148,8 +148,6 @@ const loadModel = (filename) => {
   });
   console.log('✅ Asociaciones completadas\n');
 
-  await _sequelize.sync({ alter: true });
-  console.log('✅ Tablas sincronizadas (creadas o actualizadas) en PostgreSQL');
   
   models.sequelize = _sequelize;
   _models = models;
