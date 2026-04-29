@@ -122,13 +122,14 @@ const createEvento = async (req, res) => {
         );
 
         // 4.3 Insertar ARGUMENTACIÓN (Solo una vez, vinculada al primer objetivo)
-        if (data.argumentacion?.trim() && nuevoIdObjetivo === primerIdObjetivo) {
+          if (data.argumentacion?.trim() && nuevoIdObjetivo === primerIdObjetivo) {
+          
+          // ✅ FIX: Se eliminó 'ON CONFLICT' porque la tabla no tiene esa restricción única
           await sequelize.query(
-            `INSERT INTO argumentacion (idobjetivo, texto_argumentacion) 
-             VALUES (?, ?) 
-             ON CONFLICT (idobjetivo) DO UPDATE SET texto_argumentacion = EXCLUDED.texto_argumentacion`,
+            'INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)',
             { replacements: [nuevoIdObjetivo, data.argumentacion.trim()], transaction: t }
           );
+          
           console.log('✅ Argumentación vinculada al objetivo ID:', nuevoIdObjetivo);
         }
 
