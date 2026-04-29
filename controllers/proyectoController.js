@@ -92,31 +92,47 @@ const createEvento = async (req, res) => {
       console.log('✅ Tipos de evento insertados:', data.tipos_de_evento.length);
     }
 
-    // 4. OBJETIVOS
-    // objetivos: (idobjetivo, idtipoobjetivo, texto_personalizado, idargumentacion, idobjetivo_pdi)
-    // evento_objetivos: (idevento, idobjetivo, texto_personalizado)
-    // objetivo_segmento: (idobjetivo, idsegmento, texto_personalizado)
     if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
+      let primerIdObjetivo = null; // Variable segura para argumentación global
+
       for (const objetivo of data.objetivos) {
         const idtipoobjetivo = typeof objetivo === 'number' ? objetivo : objetivo.id;
         const texto = typeof objetivo === 'object' ? (objetivo.texto_personalizado || null) : null;
 
-        // Insertar en objetivos
+        // 4.1 Insertar en tabla 'objetivos'
         const [result] = await sequelize.query(
           'INSERT INTO objetivos (idtipoobjetivo, texto_personalizado) VALUES (?, ?) RETURNING idobjetivo',
           { replacements: [idtipoobjetivo, texto], transaction: t }
         );
 
+        // ✅ FIX: Validar que obtuvimos el ID antes de continuar
         const nuevoIdObjetivo = result[0]?.idobjetivo;
-        if (!nuevoIdObjetivo) continue;
+        if (!nuevoIdObjetivo) {
+          console.warn('⚠️ No se pudo obtener el ID del objetivo creado');
+          continue;
+        }
 
-        // Vincular en evento_objetivos
+        // Guardamos el primer ID para vincular la argumentación global si existe
+        if (!primerIdObjetivo) primerIdObjetivo = nuevoIdObjetivo;
+
+        // 4.2 Vincular en 'evento_objetivos'
         await sequelize.query(
           'INSERT INTO evento_objetivos (idevento, idobjetivo, texto_personalizado) VALUES (?, ?, ?)',
           { replacements: [nuevoEventoId, nuevoIdObjetivo, texto], transaction: t }
         );
 
-        // Vincular segmentos en objetivo_segmento: (idobjetivo, idsegmento, texto_personalizado)
+        // 4.3 Insertar ARGUMENTACIÓN (Solo una vez, vinculada al primer objetivo)
+        if (data.argumentacion?.trim() && nuevoIdObjetivo === primerIdObjetivo) {
+          await sequelize.query(
+            `INSERT INTO argumentacion (idobjetivo, texto_argumentacion) 
+             VALUES (?, ?) 
+             ON CONFLICT (idobjetivo) DO UPDATE SET texto_argumentacion = EXCLUDED.texto_argumentacion`,
+            { replacements: [nuevoIdObjetivo, data.argumentacion.trim()], transaction: t }
+          );
+          console.log('✅ Argumentación vinculada al objetivo ID:', nuevoIdObjetivo);
+        }
+
+        // 4.4 Vincular SEGMENTOS a ESTE objetivo
         if (Array.isArray(data.segmentos_objetivo) && data.segmentos_objetivo.length > 0) {
           for (const segmento of data.segmentos_objetivo) {
             await sequelize.query(
@@ -126,7 +142,7 @@ const createEvento = async (req, res) => {
           }
         }
       }
-      console.log('✅ Objetivos y segmentos insertados:', data.objetivos.length);
+      console.log('✅ Objetivos, argumentación y segmentos procesados');
     }
 
     // 5. OBJETIVOS PDI
