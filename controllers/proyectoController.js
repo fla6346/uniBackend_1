@@ -158,15 +158,7 @@ const createEvento = async (req, res) => {
       }
       console.log('✅ Objetivos PDI insertados:', descripcionesValidas.length);
     }
-    if (data.argumentacion?.trim()) {
-  await sequelize.query(
-    `INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)`,
-    { 
-      replacements: [nuevoIdObjetivo, data.argumentacion.trim()], 
-      transaction: t 
-    }
-  );
-}
+  
     // 6. RESULTADOS ESPERADOS
     // resultado: (idresultados_esperados, idevento, satisfaccion_real, otros_resultados, participacion_esperada, satisfaccion_esperada)
     const resultados = typeof data.resultados_esperados === 'string'
