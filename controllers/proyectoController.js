@@ -59,7 +59,6 @@ const createEvento = async (req, res) => {
       idacademico: req.user.idusuario,
       idclasificacion: data.idclasificacion || null,
       idsubcategoria: data.idsubcategoria || null,
-      idfase:'1',
       estado: 'pendiente',
     }, { transaction: t });
 
@@ -144,8 +143,7 @@ const createEvento = async (req, res) => {
     }
     if (data.argumentacion?.trim()) {
   await sequelize.query(
-    `INSERT INTO argumentacion (idobjetivo, texto_argumentacion) 
-     VALUES (?, ?)`,
+    `INSERT INTO argumentacion (idobjetivo, texto_argumentacion) VALUES (?, ?)`,
     { 
       replacements: [nuevoIdObjetivo, data.argumentacion.trim()], 
       transaction: t 
@@ -246,7 +244,7 @@ const createEvento = async (req, res) => {
     if (Array.isArray(data.comite) && data.comite.length > 0) {
       for (const idusuario of data.comite) {
         await sequelize.query(
-          'INSERT INTO comite (idevento, idusuario) VALUES (?, ?)',
+          'INSERT INTO comite (idevento, idusuario, created_at) VALUES (?, ?, NOW())',
           { replacements: [nuevoEventoId, idusuario], transaction: t }
         );
       }
