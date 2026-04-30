@@ -406,4 +406,84 @@ const startTelegramBot = () => {
   }, 60 * 60 * 1000);
 };
 
-module.exports = { startTelegramBot, notificarTodos, notificarUsuario, getBot };
+module.exports = { startTelegramBot, notificarTodos, notificarUsuario, getBot };# ==========================================
+# 🔐 SECRETOS Y VARIABLES DE ENTORNO (CRÍTICO)
+# ==========================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+*.pem
+*.key
+*.cert
+
+# ==========================================
+# 📦 NODE.JS / NPM / YARN
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+package-lock.json  # ← Opcional: bórralo si prefieres builds deterministas
+yarn.lock
+
+# ==========================================
+# 📱 EXPO / REACT NATIVE
+# ==========================================
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+*.iml
+
+# ==========================================
+# 🍎 iOS /  ANDROID (Archivos de build)
+# ==========================================
+ios/build/
+ios/Pods/
+android/build/
+android/.gradle/
+android/local.properties
+*.xcworkspace
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# ==========================================
+# 💻 EDITORES DE CÓDIGO & SISTEMA
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# 📝 LOGS & TEMPORALES
+# ==========================================
+logs/
+*.log
+.cache/
+.temp/
+
+# ==========================================
+# 🏗️ BUILD & OUTPUT
+# ==========================================
+dist/
+build/
+*.tgz
+web-build/
+
+# ==========================================
+# 🧪 TESTING & COVERAGE
+# ==========================================
+coverage/
+.nyc_output/

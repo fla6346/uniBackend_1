@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const { getModels } = require('../models/index.js'); 
 
-const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_evento', estado = 'no_leido' }) => {
+const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_evento', estado = 'no_leido', id_relacionado = null }) => {
   try {
     // ✅ Si llega un array, enviar una notificación por cada usuario
     if (Array.isArray(idusuario)) {

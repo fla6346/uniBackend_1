@@ -349,34 +349,27 @@ const createEvento = async (req, res) => {
     await t.commit();
     console.log('✅ Transacción completada exitosamente');
 
-    // 12. NOTIFICACIONES (fuera de la transacción, no es crítico)
     if (Array.isArray(data.comite) && data.comite.length > 0) {
       try {
-        const { Notification } = require('./notificationController.js');
-        await Notification(
-          {
-            body: {
-              title: 'Nuevo evento en tu comité',
-              message: `Se ha creado un nuevo evento: "${nuevoEvento.nombreevento}". Por favor, revísalo lo antes posible.`,
-              type: 'info',
-              idevento: nuevoEventoId,
-              idusuarios: data.comite
-            }
-          },
-          {
-            status: (statusCode) => ({
-              json: (responseData) => {
-                if (statusCode >= 400) {
-                  console.error('⚠️ Error al enviar notificación:', responseData);
-                } else {
-                  console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros del comité.`);
-                }
-              }
-            })
-          }
-        );
+        // ✅ Importar la función correcta
+        const { sendNotification } = require('./notificationController.js');
+        
+        // ✅ Enviar notificación a CADA miembro del comité
+        for (const idusuario of data.comite) {
+          await sendNotification({
+            idusuario: idusuario,
+            titulo: '🎯 Nuevo evento en tu comité',
+            mensaje: `Se ha creado: "${nuevoEvento.nombreevento}" - ${nuevoEvento.fechaevento}. Por favor, revísalo.`,
+            tipo: 'comite_invitacion',
+            id_relacionado: nuevoEventoId  // Para deep-linking en frontend
+          });
+        }
+        
+        console.log(`✅ Notificaciones enviadas a ${data.comite.length} miembros del comité`);
+        
       } catch (notificationError) {
-        console.error('❗ Error no crítico al notificar al comité:', notificationError);
+        // ✅ Error en notificación NO debe romper el flujo principal
+        console.warn('⚠️ Error no crítico al notificar al comité:', notificationError.message);
       }
     }
 
