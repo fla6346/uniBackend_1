@@ -24,8 +24,26 @@ const Actividad=sequelize.define('Actividad',{
         field: 'nombre',
 
     },
-    
-    
+     responsable: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    fecha_inicio: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    fecha_fin: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    tipo: {
+      type: DataTypes.ENUM('Previa', 'Durante', 'Posterior'),
+      allowNull: false,
+      defaultValue: 'Durante',
+      validate: {
+        isIn: [['Previa', 'Durante', 'Posterior']]
+      }
+    }
 },{
     tableName:'actividades',
     timestamps:false,

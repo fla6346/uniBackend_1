@@ -483,8 +483,8 @@ const getEventoById = asyncHandler(async (req, res) => {
     const [clasificacionData] = await sequelize.query(
       `SELECT 
       e."idevento",
-      c."nombreClasificacion",
-      s."nombresubcategoria",
+      c."nombre_clasificacion",
+      s."nombre_subcategoria",
       c."idclasificacion",
       s."idsubcategoria"
     FROM "evento" e
@@ -1547,9 +1547,9 @@ const getEventoCompletoById = asyncHandler(async (req, res) => {
     const [clasificacionData] = await sequelize.query(
       `SELECT 
          c."idclasificacion", 
-         c."nombreClasificacion",
+         c."nombre_clasificacion",
          s."idsubcategoria",
-         s."nombressubcategoria"
+         s."nombre_subcategoria"
        FROM "evento" e
        LEFT JOIN "clasificacion_estrategica" c ON e."idclasificacion" = c."idclasificacion"
        LEFT JOIN "subcategoria" s ON e."idsubcategoria" = s."idsubcategoria"
