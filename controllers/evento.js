@@ -201,7 +201,13 @@ const createEvento = async (req, res) => {
       }
       console.log('✅ Tipos de evento insertados:', data.tipos_de_evento.length);
     }
-
+    if(Array.isArray(data.clasificacion_estrategica) && data.clasificacion_estrategica.length > 0) {
+      await sequelize.query(
+        'INSERT INTO evento_clasificacion (idevento, idclasificacion) VALUES (?, ?)',
+        { replacements: [nuevoEventoId, data.clasificacion_estrategica[0].id], transaction: t }
+      );
+      console.log('✅ Clasificación estratégica vinculada:', data.clasificacion_estrategica[0].nombre_clasificacion);
+      }
     // 4. OBJETIVOS
     // El frontend envía array mixto: números o { id, texto_personalizado }
     if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
@@ -454,7 +460,7 @@ const getEventoById = asyncHandler(async (req, res) => {
     );
 
     const [clasificacionData] = await sequelize.query(
-      `SELECT e."idevento", c."nombreClasificacion", s."nombresubcategoria",
+      `SELECT e."idevento", c."nombre_clasificacion", s."nombre_subcategoria",
               c."idclasificacion", s."idsubcategoria"
        FROM "evento" e
        LEFT JOIN "clasificacion_estrategica" c ON e."idclasificacion" = c."idclasificacion"
