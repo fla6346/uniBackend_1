@@ -30,7 +30,8 @@ const sendNotification = async ({ idusuario, titulo, mensaje, tipo = 'nuevo_even
           tipo,
           estado,
           created_at: new Date(),
-          updated_at: new Date()
+          updated_at: new Date(),
+          id
         },
         type: sequelize.QueryTypes.INSERT
       }
@@ -122,7 +123,7 @@ const getUnreadCount = asyncHandler(async (req, res) => {
   const count = await Notificacion.count({
     where: {
       idusuario: userId,
-      estado: 'no_leido'  
+      estado: 'pendiente' 
     }
   });
 
