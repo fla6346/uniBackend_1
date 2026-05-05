@@ -351,17 +351,17 @@ const createEvento = async (req, res) => {
 
     if (Array.isArray(data.comite) && data.comite.length > 0) {
       try {
-        // ✅ Importar la función correcta
         const { sendNotification } = require('./notificationController.js');
         
-        // ✅ Enviar notificación a CADA miembro del comité
         for (const idusuario of data.comite) {
           await sendNotification({
             idusuario: idusuario,
             titulo: '🎯 Nuevo evento en tu comité',
             mensaje: `Se ha creado: "${nuevoEvento.nombreevento}" - ${nuevoEvento.fechaevento}. Por favor, revísalo.`,
             tipo: 'comite_invitacion',
-            id_relacionado: nuevoEventoId  // Para deep-linking en frontend
+            id_relacionado: nuevoEventoId,
+            estado: 'pendiente'
+
           });
         }
         
