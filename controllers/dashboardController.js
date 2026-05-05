@@ -150,35 +150,32 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
 
     const idsAcademico = academicos.map(a => a.idacademico);
 
-    const totalEvents = await Evento.count({ where: { idacademico: idsAcademico } });
-
-    // Cambiamos created_at por fechaevento aquí también
     const eventos = await Evento.findAll({
-      attributes: ['estado', 'fechaevento'], 
+      attributes: ['estado'], // Solo necesitamos el estado para el conteo
       where: { idacademico: idsAcademico }
     });
 
+    // 3. Agrupamos y contamos por estado
     const estadoCounts = eventos.reduce((acc, ev) => {
-      const estado = ev.estado || 'sin_estado';
+      // Normalizamos a minúsculas para evitar que 'Aprobado' y 'aprobado' se cuenten lento
+      const estado = ev.estado ? ev.estado.toLowerCase() : 'sin_estado';
       acc[estado] = (acc[estado] || 0) + 1;
       return acc;
-    }, {});
-
-    const ahora = new Date();
-    const primerDiaDelMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-
-    const eventosAprobadosMes = eventos.filter(ev => {
-      const fecha = new Date(ev.fechaevento); // <--- Uso de fechaevento
-      return ev.estado === 'aprobado' && fecha >= primerDiaDelMes;
-    }).length;
+    }, {
+      aprobado: 0,
+      pendiente: 0,
+      rechazado: 0,
+      cancelado: 0,
+      vencido: 0
+    });
 
     res.status(200).json({
-      totalEvents,
-      estadoCounts,
-      eventosAprobadosMes,
-      tasaAprobacion: totalEvents > 0 ? Math.round(((estadoCounts.aprobado || 0) / totalEvents) * 100) : 0,
+      totalEvents: eventos.length,
+      estadoCounts, // Ahora este objeto contiene el total real de "aprobados" de este usuario
+      systemStability: 99
     });
   } catch (error) {
+    console.error('Error en estadísticas personales:', error);
     res.status(500).json({ error: 'Error en estadísticas personales', message: error.message });
   }
 });
