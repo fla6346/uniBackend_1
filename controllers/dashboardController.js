@@ -145,23 +145,24 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
     if (!idusuario) {
       return res.status(401).json({ error: 'Usuario no identificado' });
     }
-
+    console.log('👤 idusuario:', idusuario);
     const { Evento, Academico } = models;
 
     const academicos = await Academico.findAll({
       where: { idusuario }
     });
-
+      console.log('🎓 academicos encontrados:', JSON.stringify(academicos, null, 2));
     if (!academicos || academicos.length === 0) {
       return res.status(403).json({ error: 'No tienes perfil de académico registrado.' });
     }
 
     const idsAcademico = academicos.map(a => a.idacademico);
+     console.log('📋 idsAcademico:', idsAcademico);
 
     const totalEvents = await Evento.count({
       where: { idacademico: idsAcademico }
     });
-
+     console.log('📅 totalEvents:', totalEvents);
     const eventosPorEstado = await Evento.findAll({
       attributes: ['estado','fechaevento'],
       where: { idacademico: idsAcademico }
