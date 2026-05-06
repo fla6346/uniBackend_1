@@ -661,19 +661,17 @@ const getEventoById = asyncHandler(async (req, res) => {
 const updateEvento = asyncHandler(async (req, res) => {
   const models = getModels(); 
   const sequelize = models.sequelize; 
-  const { Evento} = models;
+  const { Evento } = models;
+  
+  const { id } = req.params;
+  const idevento = parseInt(id, 10);
+
+  if (isNaN(idevento) || idevento <= 0) {
+    return res.status(400).json({ message: 'ID de evento inválido' });
+  }
+
   const t = await sequelize.transaction();
   try {
-    const { id } = req.params;
-    const idevento = parseInt(id, 10);
-     
-
-
-    if (isNaN(idevento) || idevento <= 0) {
-      await t.rollback();
-      return res.status(400).json({ message: 'ID de evento inválido' });
-    }
-
     const [eventoExists] = await sequelize.query(
       'SELECT 1 FROM evento WHERE idevento = ?',
       { replacements: [idevento], transaction: t }
@@ -683,9 +681,10 @@ const updateEvento = asyncHandler(async (req, res) => {
       await t.rollback();
       return res.status(404).json({ message: 'Evento no encontrado' });
     }
-     const camposActualizables = [
+
+    const camposActualizables = [
       'nombreevento', 'lugarevento', 'fechaevento', 'horaevento',
-      'idlayout', 'descripcion', 'idacademico', 'idclasificacion','idsubcategoria'
+      'idlayout', 'descripcion', 'idacademico', 'idclasificacion', 'idsubcategoria'
     ];
     
     const camposParaActualizar = {};
@@ -695,29 +694,27 @@ const updateEvento = asyncHandler(async (req, res) => {
       }
     }
     
-  if (Object.keys(camposParaActualizar).length > 0) {
-  const setClauses = Object.keys(camposParaActualizar).map(k => `"${k}" = ?`);
-  const values = [...Object.values(camposParaActualizar), idevento];
-  await sequelize.query(
-    `UPDATE evento SET ${setClauses.join(', ')} WHERE idevento = ?`,
-    { replacements: values, transaction: t }
-  );
-}
+    if (Object.keys(camposParaActualizar).length > 0) {
+      const setClauses = Object.keys(camposParaActualizar).map(k => `"${k}" = ?`);
+      const values = [...Object.values(camposParaActualizar), idevento];
+      await sequelize.query(
+        `UPDATE evento SET ${setClauses.join(', ')} WHERE idevento = ?`,
+        { replacements: values, transaction: t }
+      );
+    }
 
-  const TIPO_MAPEO = {
-  actividadesPrevias: 'Previa',
-  actividadesDurante: 'Durante',
-  actividadesPost: 'Posterior'
-};
-   for (const [tipoFrontend, tipoDB] of Object.entries(TIPO_MAPEO)) {
+    const TIPO_MAPEO = {
+      actividadesPrevias: 'Previa',
+      actividadesDurante: 'Durante',
+      actividadesPost: 'Posterior'
+    };
+
+    for (const [tipoFrontend, tipoDB] of Object.entries(TIPO_MAPEO)) {
       if (Array.isArray(req.body[tipoFrontend])) {
-        // Eliminar actividades anteriores de este tipo
         await sequelize.query(
           'DELETE FROM actividades WHERE idevento = ? AND tipo = ?',
           { replacements: [idevento, tipoDB], transaction: t }
         );
-        
-        // Insertar nuevas actividades
         for (const act of req.body[tipoFrontend]) {
           await sequelize.query(
             `INSERT INTO actividades (idevento, nombre, responsable, fecha_inicio, fecha_fin, tipo)
@@ -738,18 +735,15 @@ const updateEvento = asyncHandler(async (req, res) => {
       }
     }
 
-    // === 3. ACTUALIZAR SERVICIOS ===
     if (Array.isArray(req.body.serviciosContratados)) {
       await sequelize.query(
         'DELETE FROM servicio WHERE idevento = ?',
         { replacements: [idevento], transaction: t }
       );
-      
       for (const s of req.body.serviciosContratados) {
         const fechaEntrega = s.fechaInicio instanceof Date
           ? s.fechaInicio.toISOString().split('T')[0]
           : (typeof s.fechaInicio === 'string' ? s.fechaInicio.split('T')[0] : null);
-          
         await sequelize.query(
           `INSERT INTO servicio (idevento, nombreservicio, fechadeentrega, caracteristicas, observaciones)
            VALUES (?, ?, ?, ?, ?)`,
@@ -767,67 +761,46 @@ const updateEvento = asyncHandler(async (req, res) => {
       }
     }
 
-   
-
     if (req.body.nuevaFase) {
       const { nrofase } = req.body.nuevaFase;
-    
-       const [faseRow] = await sequelize.query(
-    'SELECT idfase, nrofase FROM fase WHERE nrofase = ? LIMIT 1',
-    { 
-      replacements: [parseInt(nrofase)],
-      type: sequelize.QueryTypes.SELECT,
-      transaction: t 
-    }
-  );
-
+      const [faseRow] = await sequelize.query(
+        'SELECT idfase, nrofase FROM fase WHERE nrofase = ? LIMIT 1',
+        { replacements: [parseInt(nrofase)], type: sequelize.QueryTypes.SELECT, transaction: t }
+      );
       if (faseRow) {
-    await sequelize.query(
-      'UPDATE evento SET idfase = ? WHERE idevento = ?',
-      {
-        replacements: [faseRow.idfase, idevento],
-        transaction: t
+        await sequelize.query(
+          'UPDATE evento SET idfase = ? WHERE idevento = ?',
+          { replacements: [faseRow.idfase, idevento], transaction: t }
+        );
+        console.log(`✅ Evento ${idevento} actualizado a fase ${nrofase}`);
+      } else {
+        console.warn(`⚠️ Fase con nrofase=${nrofase} no encontrada en catálogo`);
       }
-    );
-    console.log(`✅ Evento ${idevento} actualizado a fase ${nrofase} (idfase: ${faseRow.idfase})`);
-  } else {
-    console.warn(`⚠️ Fase con nrofase=${nrofase} no encontrada en catálogo`);
-  }
     }
 
     await t.commit();
 
-    const eventoActualizado = await Evento.findByPk(idevento, {
-      include: [
-        { model: models.Fase, as: 'fase', attributes: ['idfase', 'nrofase'] }
-      ]
-    });
+    // ✅ Fuera de la transacción, sin include problemático
+    const eventoActualizado = await Evento.findByPk(idevento);
 
     return res.status(200).json({
       success: true,
-      message: 'Evento actualizado correctamente con fase 2',
+      message: 'Evento actualizado correctamente',
       data: eventoActualizado
     });
 
   } catch (error) {
-    await t.rollback();
-    
-    console.error('❌ Error en updateEvento:', {
-      message: error.message,
-      stack: error.stack,
-      sql: error.sql
-    });
-    
+    if (!t.finished) {
+      await t.rollback();
+    }
+    console.error('❌ Error en updateEvento:', error.message);
     return res.status(500).json({
       success: false,
       message: 'Error al actualizar el evento',
       error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
-
-  
- });
+});
 
 const deleteEvento = asyncHandler(async (req, res) => {
   let models;
