@@ -141,42 +141,67 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
   try {
     const models = getModels();
     const { idusuario } = req.user;
+
+    if (!idusuario) {
+      return res.status(401).json({ error: 'Usuario no identificado' });
+    }
+
     const { Evento, Academico } = models;
 
-    const academicos = await Academico.findAll({ where: { idusuario } });
+    const academicos = await Academico.findAll({
+      where: { idusuario }
+    });
+
     if (!academicos || academicos.length === 0) {
       return res.status(403).json({ error: 'No tienes perfil de académico registrado.' });
     }
 
     const idsAcademico = academicos.map(a => a.idacademico);
 
-    const eventos = await Evento.findAll({
-      attributes: ['estado'], // Solo necesitamos el estado para el conteo
+    const totalEvents = await Evento.count({
       where: { idacademico: idsAcademico }
     });
 
-    // 3. Agrupamos y contamos por estado
-    const estadoCounts = eventos.reduce((acc, ev) => {
-      // Normalizamos a minúsculas para evitar que 'Aprobado' y 'aprobado' se cuenten lento
-      const estado = ev.estado ? ev.estado.toLowerCase() : 'sin_estado';
-      acc[estado] = (acc[estado] || 0) + 1;
-      return acc;
-    }, {
-      aprobado: 0,
-      pendiente: 0,
-      rechazado: 0,
-      cancelado: 0,
-      vencido: 0
+    const eventosPorEstado = await Evento.findAll({
+      attributes: ['estado'],
+      where: { idacademico: idsAcademico }
     });
 
-    res.status(200).json({
-      totalEvents: eventos.length,
-      estadoCounts, // Ahora este objeto contiene el total real de "aprobados" de este usuario
-      systemStability: 99
+    const estadoCounts = {};
+    eventosPorEstado.forEach(evento => {
+      const estado = evento.estado || 'sin_estado';
+      estadoCounts[estado] = (estadoCounts[estado] || 0) + 1;
     });
+
+    const primerDiaDelMes = new Date();
+    primerDiaDelMes.setDate(1);
+    primerDiaDelMes.setHours(0, 0, 0, 0);
+
+    const eventosAprobadosMes = eventosPorEstado.filter(evento => {
+      const fechaEvento = new Date(evento.created_at);
+      return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
+    }).length;
+
+    const eventosAprobados = estadoCounts.aprobado || 0;
+    const tasaAprobacion = totalEvents > 0 
+      ? Math.round((eventosAprobados / totalEvents) * 100) 
+      : 0;
+
+    const stats = {
+      totalEvents,
+      estadoCounts,
+      eventosAprobadosMes,
+      tasaAprobacion,
+    };
+
+    res.status(200).json(stats);
+    
   } catch (error) {
-    console.error('Error en estadísticas personales:', error);
-    res.status(500).json({ error: 'Error en estadísticas personales', message: error.message });
+    console.error('❌ Error en getMyDashboardStats:', error);
+    res.status(500).json({ 
+      error: 'Error al cargar tus estadísticas',
+      message: error.message 
+    });
   }
 });
 
