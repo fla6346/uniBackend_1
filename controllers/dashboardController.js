@@ -139,6 +139,8 @@ const getHistoricalData = asyncHandler(async (req, res) => {
 });
 const getMyDashboardStats = asyncHandler(async (req, res) => {
   try {
+     console.log('🔍 req.user completo:', JSON.stringify(req.user, null, 2));
+    
     const models = getModels();
     const { idusuario } = req.user;
 
