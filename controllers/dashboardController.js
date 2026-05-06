@@ -158,7 +158,7 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
       return res.status(403).json({ error: 'No tienes perfil de académico registrado.' });
     }
 
-    const idsAcademico = academicos.map(a => a.idAcademico || a.idacademico).filter(Boolean);
+    const idsAcademico = academicos.map(a => a.idacademico || a.idacademico).filter(Boolean);
      console.log('📋 idsAcademico:', idsAcademico);
 
     const totalEvents = await Evento.count({
@@ -217,7 +217,7 @@ const getMyHistoricalData = asyncHandler(async (req, res) => {
     const academicos = await Academico.findAll({ where: { idusuario } });
     if (!academicos || academicos.length === 0) return res.status(200).json({ historical: [] });
     
-    const idsAcademico = academicos.map(a => a.idAcademico || a.idacademico).filter(Boolean);
+    const idsAcademico = academicos.map(a => a.idacademico || a.idacademico).filter(Boolean);
 
     const now = new Date();
     const historical = [];

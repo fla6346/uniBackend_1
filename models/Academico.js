@@ -43,8 +43,8 @@ module.exports = (sequelize, DataTypes) => {
     Academico.belongsTo(models.User, { foreignKey: 'idusuario', as: 'usuario' });
     Academico.belongsTo(models.Facultad, { foreignKey: 'facultad_id', as: 'facultad' });
     Academico.belongsTo(models.Carrera, { foreignKey: 'idcarrera', as: 'carrera' });
-    Academico.belongsTo(models.User, { foreignKey: 'idacademico', as: 'academicoCreador' });  
-    Academico.belongsTo(models.Comite,{foreignKey: 'idAcademico', through: 'ComiteUsuarios'});
+   /* Academico.belongsTo(models.User, { foreignKey: 'idacademico', as: 'academicoCreador' });  
+    Academico.belongsTo(models.Comite,{foreignKey: 'idacademico', through: 'ComiteUsuarios'});*/
     }
   
   return Academico;
