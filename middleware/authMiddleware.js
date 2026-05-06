@@ -34,7 +34,6 @@ const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('🔐 Token decodificado:', JSON.stringify(decoded, null, 2));
     const models = getModels();
     const User = models.User;
 
