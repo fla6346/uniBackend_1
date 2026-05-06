@@ -163,7 +163,7 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
     });
 
     const eventosPorEstado = await Evento.findAll({
-      attributes: ['estado'],
+      attributes: ['estado','fechaevento'],
       where: { idacademico: idsAcademico }
     });
 
@@ -178,7 +178,7 @@ const getMyDashboardStats = asyncHandler(async (req, res) => {
     primerDiaDelMes.setHours(0, 0, 0, 0);
 
     const eventosAprobadosMes = eventosPorEstado.filter(evento => {
-      const fechaEvento = new Date(evento.created_at);
+      const fechaEvento = new Date(evento.fechaevento);
       return evento.estado === 'aprobado' && fechaEvento >= primerDiaDelMes;
     }).length;
 
