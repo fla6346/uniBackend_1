@@ -87,7 +87,7 @@ const startServer = async () => {
     app.use('/layouts',       require('./routes/layoutsRoutes.js'));
     app.use('/estudiantes',   require('./routes/estudiantesRoutes.js'));
     app.use('/bot',           require('./routes/botRoutes.js'));
-
+    app.use('/daf',           require('./routes/dafRoutes.js'));
     app.get('/health', (req, res) => {
       res.json({ status: 'ok', message: '✅ API Funcionando!', timestamp: new Date().toISOString() });
     });
