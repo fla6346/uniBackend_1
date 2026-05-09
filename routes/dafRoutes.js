@@ -5,6 +5,6 @@ const {authMiddleware} = require('../middleware/authMiddleware'); // Tu middlewa
 
 const router = express.Router();
 
-router.get('/reportes', authMiddleware, reportes);
+router.get('/reportes', reportes);
 
 module.exports = router;
