@@ -22,7 +22,7 @@ const getDateRange = (periodo) => {
   return { start, end: now };
 };
 
-const reports = async (req, res) => {
+const reportes = async (req, res) => {
   try {
     const { periodo = 'mes' } = req.query;
     const { start, end } = getDateRange(periodo);
@@ -119,4 +119,4 @@ const reports = async (req, res) => {
   }
 };
 
-module.exports = { reports };
+module.exports = { reportes };

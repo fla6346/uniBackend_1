@@ -1,10 +1,10 @@
 // routes/daf.js (Node.js/Express)
 const express = require('express');
-const {reports} = require('../controllers/dafController');
+const {reportes} = require('../controllers/dafController');
 const {authMiddleware} = require('../middleware/authMiddleware'); // Tu middleware de auth
 
 const router = express.Router();
 
-router.get('/reportes', authMiddleware, reports);
+router.get('/reportes', authMiddleware, reportes);
 
 module.exports = router;
