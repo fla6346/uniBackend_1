@@ -5,33 +5,42 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}`;
 
-async function askGemini(userMessage, senderInfo = 'Invitado', eventosContexto = "") {
-  const candidates = ['gemini-2.0-flash-lite', 'gemini-2.5-flash'];
-  const systemPrompt = `Eres el asistente virtual de la UNIFRANZ...\n${eventosContexto}`;
+async function safeGeminiCall(modelName, contents) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timeout')), 8000);
+    genAI.getGenerativeModel({ model: modelName })
+      .generateContent(contents)
+      .then(res => { clearTimeout(timeout); resolve(res.response.text()); })
+      .catch(err => { clearTimeout(timeout); reject(err); });
+  });
+}
 
-  for (const modelName of candidates) {
-    const controller = new AbortController(); // Crear controlador
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // Programar cancelación
+async function askGemini(userMessage, senderInfo = 'Invitado', eventosContexto = "", history = []) {
+  const systemPrompt = `Eres el asistente virtual de gestión de eventos de la UNIFRANZ.
+  📌 INSTRUCCIONES:
+  - Responde SOLO con la información proporcionada en el contexto.
+  - Si falta un dato, di claramente: "No tengo información actualizada sobre X".
+  - Sé conciso (máx 3-4 líneas). Usa formato claro.
+  📊 CONTEXTO DEL EVENTO/SISTEMA:
+  ${eventosContexto || "Sin contexto específico disponible."}`;
 
+  const contents = [
+    { role: 'user', parts: [{ text: systemPrompt }] },
+    ...history.slice(-6), // Últimos 6 intercambios para ahorrar tokens
+    { role: 'user', parts: [{ text: userMessage }] }
+  ];
+
+  for (const model of ['gemini-2.0-flash', 'gemini-1.5-flash']) {
     try {
-      const geminiModel = genAI.getGenerativeModel({ model: modelName });
-
-      // Pasar la señal de cancelación a la API si el SDK lo soporta, 
-      // o usar el race pero LIMPIANDO el timeout.
-      const result = await geminiModel.generateContent(`${systemPrompt}\n\nPregunta: ${userMessage}`);
-      
-      clearTimeout(timeoutId); // <--- CRÍTICO: Detener el reloj si Gemini respondió
-      return result.response.text();
-
+      return await safeGeminiCall(model, contents);
     } catch (err) {
-      clearTimeout(timeoutId); // Limpiar también en caso de error
-      if (err.name === 'AbortError') console.error(`❌ Timeout en ${modelName}`);
-      else console.error(`❌ Error en ${modelName}:`, err.message);
-      continue;
+      console.warn(`⚠️ Fallo con ${model}:`, err.message);
     }
   }
-  return "Servicio saturado, intenta en un momento.";
+  return "⚠️ Servicio temporalmente ocupado. Intenta en unos segundos.";
 }
+
+
 function getMessage() {
   try {
     return getModels()?.Message || null;
@@ -83,51 +92,43 @@ const whatsappWebhook = async (req, res) => {
 const appChat = async (req, res) => {
   try {
     const models = getModels();
-    const {Evento, Message}= models
-    const { message, sender = 'invitado' } = req.body;
+    const { Evento, Message } = models;
+    const { message, sender = 'invitado', eventId, history = [] } = req.body;
 
-        if (!message?.trim()) return res.status(400).json({ error: 'Mensaje vacío' });
+    if (!message?.trim()) return res.status(400).json({ error: 'Mensaje vacío' });
+
     let eventosContexto = "";
 
-    if (Evento) {
-      try {
-        const listaEventos = await Evento.findAll({
-          where: { estado: 'activo' },
-          limit: 5,
-          attributes: ['nombreevento', 'fechaevento', 'descripcion', 'lugarevento']
-        });
-
-        if (listaEventos.length > 0) {
-          eventosContexto = listaEventos.map(e => 
-            `- ${e.nombreevento}: el ${e.fechaevento} en ${e.lugarevento}. Desc: ${e.descripcion}`
-          ).join('\n');
-        }
-      } catch (dbErr) {
-        console.error('⚠️ Error al consultar eventos:', dbErr.message);
-        eventosContexto = "No hay eventos disponibles en este momento.";
+    // 🎯 Si viene eventId, contexto específico. Si no, lista general.
+    if (Evento && eventId) {
+      const evento = await Evento.findByPk(eventId, {
+        attributes: ['nombreevento', 'fechaevento', 'descripcion', 'lugarevento', 'estado']
+      });
+      if (evento) {
+        eventosContexto = `EVENTO ACTIVO:\n- Nombre: ${evento.nombreevento}\n- Fecha: ${evento.fechaevento}\n- Lugar: ${evento.lugarevento}\n- Estado: ${evento.estado}\n- Descripción: ${evento.descripcion}`;
       }
+    } else if (Evento) {
+      const lista = await Evento.findAll({ where: { estado: 'activo' }, limit: 4, attributes: ['nombreevento', 'fechaevento', 'estado'] });
+      eventosContexto = "Eventos activos:\n" + lista.map(e => `- ${e.nombreevento} (${e.fechaevento}) [${e.estado}]`).join('\n');
     }
 
-    // 2. IMPORTANTE: Pasamos eventosContexto a la función askGemini
-    const reply = await askGemini(
-      message, 
-      sender,
-      eventosContexto // <--- Aquí es donde se la pasamos
-    );
+    const reply = await askGemini(message, sender, eventosContexto, history);
 
-    // 3. Guardar en historial
-    if (models.Message && sender !== 'invitado') {
-      await models.Message.create({ sender, text: message, role: 'user', timestamp: new Date() });
-      await models.Message.create({ sender, text: reply, role: 'bot', timestamp: new Date() });
+    // 💾 Guardar historial (recomendado añadir eventId o sessionId a tu modelo Message)
+    if (Message && sender !== 'invitado') {
+      await Promise.all([
+        Message.create({ sender, text: message, role: 'user', eventId: eventId || null, timestamp: new Date() }),
+        Message.create({ sender, text: reply, role: 'bot', eventId: eventId || null, timestamp: new Date() })
+      ]);
     }
 
-    res.json({ reply });
-
+    res.json({ reply, eventId });
   } catch (error) {
-    console.error('❌ Error en appChat:', error.message);
-    res.status(500).json({ error: 'Error al procesar la solicitud.' });
+    console.error('❌ Error en appChat:', error);
+    res.status(500).json({ error: 'Error interno al procesar la solicitud.' });
   }
 };
+
 
 const getChatHistory = async (req, res) => {
   try {
