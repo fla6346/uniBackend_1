@@ -21,6 +21,15 @@ module.exports = (sequelize,DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
+    cantidad: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1,
+      allowNull: false,
+      validate: {
+        min: 0,
+        isInt: true
+      }
+    },
     habilitado: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
