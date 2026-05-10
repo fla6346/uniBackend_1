@@ -21,7 +21,8 @@ const createRecurso = asyncHandler(async (req, res) => {
     nombre_recurso,
     recurso_tipo,
     descripcion: descripcion || null,
-    habilitado: habilitado !== undefined ? habilitado : true
+    habilitado: habilitado !== undefined ? habilitado : true,
+    cantidad: cantidad,
   });
 
   res.status(201).json({
@@ -41,7 +42,7 @@ const getRecursos = asyncHandler(async (req, res) => {
 
   const recursos = await Recurso.findAll({
     where: { habilitado: true },
-    attributes: ['idrecurso', 'nombre_recurso', 'recurso_tipo', 'descripcion']
+    attributes: ['idrecurso', 'nombre_recurso', 'recurso_tipo', 'descripcion','cantidad']
   });
   res.json({ recursos });
 })
@@ -55,7 +56,7 @@ const updateRecurso = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('Recurso no encontrado.');
   }
-  const { nombre_recurso, recurso_tipo, descripcion, habilitado } = req.body;
+  const { nombre_recurso, recurso_tipo, descripcion, habilitado, cantidad } = req.body;
 
   await recurso.update({
     nombre_recurso: nombre_recurso ?? recurso.nombre_recurso,
