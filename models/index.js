@@ -99,7 +99,8 @@ if (process.env.DATABASE_URL) {
     'Presupuesto.js',
     'Ingreso.js',
     'Egreso.js',
-    'Message.js'
+    'Message.js',
+    'ChatMensaje.js'
   ];
 
 const loadModel = (filename) => {

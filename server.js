@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const app = express();
+const http = require('http');
+const { Server } = require('socket.io');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const PORT = process.env.PORT || 3001;
 
@@ -35,7 +37,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://unifrontend-production.up.railway.app',
+      'http://localhost:3000',
+      'http://localhost:8081'
+    ],
+    credentials: true
+  }
+});
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (frontendExists) app.use(express.static(FRONTEND_PATH));
@@ -88,6 +100,8 @@ const startServer = async () => {
     app.use('/estudiantes',   require('./routes/estudiantesRoutes.js'));
     app.use('/bot',           require('./routes/botRoutes.js'));
     app.use('/daf',           require('./routes/dafRoutes.js'));
+    const chatSocket = require('./sockets/chatSocket.js');
+    chatSocket(io);
     app.get('/health', (req, res) => {
       res.json({ status: 'ok', message: '✅ API Funcionando!', timestamp: new Date().toISOString() });
     });
@@ -114,10 +128,8 @@ const startServer = async () => {
       });
     });
 
-    // ← app.listen llama al bot UNA sola vez, sin re-importar
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-      console.log('🤖 Telegram Bot iniciado');
     });
 
   } catch (err) {
