@@ -4,63 +4,76 @@ module.exports = (io) => {
   io.on('connection', (socket) => {
     console.log('🔌 Usuario conectado:', socket.id);
 
-    socket.on('join_event', async ({ eventoId, userId, role, userName }) => {
-      const room = `evento_${eventoId}`;
-      socket.join(room);
-      socket.data = { userId, role, eventoId, userName };
-
-      // ✅ Usar getModels() en vez de require('../models')
-      try {
-        const { getModels } = require('../models');
-        const { ChatMensaje } = getModels();
-
-        const historial = await ChatMensaje.findAll({
-          where: { evento_id: String(eventoId) },
-          order: [['createdAt', 'ASC']],
-          limit: 50
-        });
-
-        socket.emit('history', historial.map(m => ({
-          userId:    m.user_id,
-          userName:  m.user_name,
-          role:      m.role,
-          message:   m.message,
-          timestamp: m.createdAt
-        })));
-      } catch (e) {
-        console.warn('⚠️ No se cargó historial:', e.message);
-        socket.emit('history', []);
+    socket.on('join_event', async (data) => {
+    const { eventoId, userId, role } = data;
+    
+    try {
+      // ✅ Validar que el usuario sea del comité
+      const [rows] = await db.query(
+        `SELECT 1 FROM Comite 
+         WHERE idevento = ? AND idusuario = ?`,
+        [eventoId, userId]
+      );
+      
+      if (rows.length === 0) {
+        socket.emit('error', { message: 'No eres miembro de este comité' });
+        return;
       }
+      
+      // ✅ Unir a la sala del evento
+      socket.join(`evento_${eventoId}`);
+      socket.emit('joined', { eventoId });
+      
+      // Enviar historial
+      const [messages] = await db.query(
+        `SELECT * FROM mensajes_chat 
+         WHERE idevento = ? 
+         ORDER BY fechaenvio ASC 
+         LIMIT 50`,
+        [eventoId]
+      );
+      
+      socket.emit('history', messages);
+      
+    } catch (error) {
+      console.error('Error al unirse al chat:', error);
+      socket.emit('error', { message: 'Error al conectar al chat' });
+    }
+  });
+  
 
-      socket.to(room).emit('user_joined', { userId, userName, role });
-      console.log(`👤 ${userName} (${role}) → sala ${room}`);
+    socket.on('send_message', async (data) => {
+    const { eventoId, userId, role, userName, message } = data;
+    
+    // ✅ Validar nuevamente antes de enviar
+    const [rows] = await db.query(
+      `SELECT 1 FROM Comite 
+       WHERE idevento = ? AND idusuario = ?`,
+      [eventoId, userId]
+    );
+    
+    if (rows.length === 0) {
+      socket.emit('error', { message: 'No tienes permiso para enviar mensajes' });
+      return;
+    }
+    
+    // Guardar mensaje
+    await db.query(
+      `INSERT INTO mensajes_chat (idevento, idusuario, rol, nombreusuario, mensaje, fechaenvio) 
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [eventoId, userId, role, userName, message]
+    );
+    
+    // Broadcast a la sala
+    io.to(`evento_${eventoId}`).emit('receive_message', {
+      eventoId,
+      userId,
+      role,
+      userName,
+      message,
+      fechaenvio: new Date()
     });
-
-    socket.on('send_message', async ({ eventoId, userId, role, userName, message }) => {
-      const room = `evento_${eventoId}`;
-
-      const msg = {
-        userId, userName, role, message,
-        timestamp: new Date().toISOString()
-      };
-
-      try {
-        const { getModels } = require('../models');
-        const { ChatMensaje } = getModels();
-
-        await ChatMensaje.create({
-          evento_id: String(eventoId),
-          user_id:   String(userId),
-          user_name: userName,
-          role,
-          message
-        });
-      } catch (e) {
-        console.warn('⚠️ No se guardó en DB:', e.message);
-      }
-
-      io.to(room).emit('receive_message', msg);
-    });
+  });
 
     socket.on('leave_event', ({ eventoId }) => {
       socket.leave(`evento_${eventoId}`);
