@@ -11,20 +11,29 @@ module.exports = (io) => {
         const { getModels } = require('../models');
         const { ChatMensaje, Comite } = getModels();
 
-        // Validar comité (solo si no es sala general)
-        if (eventoId !== 'general') {
-          const esMiembro = await Comite.findOne({
-            where: {
-              idevento:  parseInt(eventoId),
-              idusuario: parseInt(userId)
-            }
-          });
+          if (eventoId !== 'general') {
+            const { getModels } = require('../models');
+            const { Comite, Evento } = getModels();
 
-          if (!esMiembro) {
-            socket.emit('error', { message: 'No eres miembro de este comité' });
-            return;
+            const [esMiembroComite, evento] = await Promise.all([
+              Comite.findOne({
+                where: {
+                  idevento:  parseInt(eventoId),
+                  idusuario: parseInt(userId)
+                }
+              }),
+              Evento.findOne({
+                where: { idevento: parseInt(eventoId) }
+              })
+            ]);
+
+            const esCreador = evento && parseInt(evento.idacademico) === parseInt(userId);
+
+            if (!esMiembroComite && !esCreador) {
+              socket.emit('error', { message: 'No tienes acceso a este chat' });
+              return;
+            }
           }
-        }
 
         // Unirse a la sala
         socket.join(room);
