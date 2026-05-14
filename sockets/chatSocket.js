@@ -11,11 +11,11 @@ module.exports = (io) => {
         const { getModels } = require('../models');
         const { ChatMensaje, Comite } = getModels();
 
-        // ✅ Si NO es sala general, validar que sea del comité
+        // Validar comité (solo si no es sala general)
         if (eventoId !== 'general') {
           const esMiembro = await Comite.findOne({
             where: {
-              idevento: parseInt(eventoId),
+              idevento:  parseInt(eventoId),
               idusuario: parseInt(userId)
             }
           });
@@ -25,17 +25,12 @@ module.exports = (io) => {
             return;
           }
         }
-        await ChatMensaje.create({
-          evento_id: String(eventoId),   // STRING en ChatMensaje está bien
-          user_id:   String(userId),
-          user_name: userName,
-          role,
-          message
-        });
+
+        // Unirse a la sala
         socket.join(room);
         socket.data = { userId, role, eventoId, userName };
 
-        // Enviar historial
+        // Enviar historial al usuario que entró
         const historial = await ChatMensaje.findAll({
           where: { evento_id: String(eventoId) },
           order: [['createdAt', 'ASC']],
@@ -50,7 +45,7 @@ module.exports = (io) => {
           timestamp: m.createdAt
         })));
 
-        // Notificar a los demás
+        // Notificar a los demás en la sala
         socket.to(room).emit('user_joined', { userId, userName, role });
         console.log(`👤 ${userName} (${role}) → sala ${room}`);
 
@@ -67,10 +62,13 @@ module.exports = (io) => {
         const { getModels } = require('../models');
         const { ChatMensaje, Comite } = getModels();
 
-        // ✅ Validar pertenencia al comité antes de guardar
+        // Validar comité antes de guardar
         if (eventoId !== 'general') {
           const esMiembro = await Comite.findOne({
-            where: { idevento: eventoId, idusuario: userId }
+            where: {
+              idevento:  parseInt(eventoId),
+              idusuario: parseInt(userId)
+            }
           });
 
           if (!esMiembro) {
@@ -90,7 +88,10 @@ module.exports = (io) => {
 
         // Broadcast a todos en la sala
         io.to(room).emit('receive_message', {
-          userId, userName, role, message,
+          userId,
+          userName,
+          role,
+          message,
           timestamp: new Date().toISOString()
         });
 
