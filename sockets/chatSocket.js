@@ -9,37 +9,35 @@ module.exports = (io) => {
 
       try {
         const { getModels } = require('../models');
-        const { ChatMensaje, Comite } = getModels();
+        const { ChatMensaje, Comite, Evento } = getModels();
 
-          if (eventoId !== 'general') {
-            const { getModels } = require('../models');
-            const { Comite, Evento } = getModels();
+        // Validar acceso si no es sala general
+        if (eventoId !== 'general') {
+          const [esMiembroComite, evento] = await Promise.all([
+            Comite.findOne({
+              where: {
+                idevento:  parseInt(eventoId),
+                idusuario: parseInt(userId)
+              }
+            }),
+            Evento.findOne({
+              where: { idevento: parseInt(eventoId) }
+            })
+          ]);
 
-            const [esMiembroComite, evento] = await Promise.all([
-              Comite.findOne({
-                where: {
-                  idevento:  parseInt(eventoId),
-                  idusuario: parseInt(userId)
-                }
-              }),
-              Evento.findOne({
-                where: { idevento: parseInt(eventoId) }
-              })
-            ]);
+          const esCreador = evento && parseInt(evento.idacademico) === parseInt(userId);
 
-            const esCreador = evento && parseInt(evento.idacademico) === parseInt(userId);
-
-            if (!esMiembroComite && !esCreador) {
-              socket.emit('error', { message: 'No tienes acceso a este chat' });
-              return;
-            }
+          if (!esMiembroComite && !esCreador) {
+            socket.emit('error', { message: 'No tienes acceso a este chat' });
+            return;
           }
+        }
 
         // Unirse a la sala
         socket.join(room);
         socket.data = { userId, role, eventoId, userName };
 
-        // Enviar historial al usuario que entró
+        // Enviar historial
         const historial = await ChatMensaje.findAll({
           where: { evento_id: String(eventoId) },
           order: [['createdAt', 'ASC']],
@@ -54,7 +52,6 @@ module.exports = (io) => {
           timestamp: m.createdAt
         })));
 
-        // Notificar a los demás en la sala
         socket.to(room).emit('user_joined', { userId, userName, role });
         console.log(`👤 ${userName} (${role}) → sala ${room}`);
 
@@ -69,18 +66,25 @@ module.exports = (io) => {
 
       try {
         const { getModels } = require('../models');
-        const { ChatMensaje, Comite } = getModels();
+        const { ChatMensaje, Comite, Evento } = getModels();
 
-        // Validar comité antes de guardar
+        // Validar acceso: comité O creador
         if (eventoId !== 'general') {
-          const esMiembro = await Comite.findOne({
-            where: {
-              idevento:  parseInt(eventoId),
-              idusuario: parseInt(userId)
-            }
-          });
+          const [esMiembro, evento] = await Promise.all([
+            Comite.findOne({
+              where: {
+                idevento:  parseInt(eventoId),
+                idusuario: parseInt(userId)
+              }
+            }),
+            Evento.findOne({
+              where: { idevento: parseInt(eventoId) }
+            })
+          ]);
 
-          if (!esMiembro) {
+          const esCreador = evento && parseInt(evento.idacademico) === parseInt(userId);
+
+          if (!esMiembro && !esCreador) {
             socket.emit('error', { message: 'No tienes permiso para enviar mensajes' });
             return;
           }
