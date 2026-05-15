@@ -37,17 +37,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 
-const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      'https://unifrontend-production.up.railway.app',
-      'http://localhost:3000',
-      'http://localhost:8081'
-    ],
-    credentials: true
-  }
+    origin: (origin, callback) => {
+      // Permite cualquier origen (para web, móvil, y Expo)
+      callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST']
+  },
+  // Necesario para web con Expo
+  allowEIO3: true,
+  transports: ['polling', 'websocket']
 });
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (frontendExists) app.use(express.static(FRONTEND_PATH));
@@ -61,9 +64,6 @@ app.use('/uploads', (req, res, next) => {
 });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ==========================================
-// RUTAS FRONTEND (HTML)
-// ==========================================
 if (frontendExists) {
   app.get('/', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'index.html')));
   app.get('/Login', (req, res) => res.sendFile(path.join(FRONTEND_PATH, 'Login.html')));
@@ -73,9 +73,6 @@ if (frontendExists) {
 } else {
   app.get('/', (req, res) => res.json({ status: '✅ API online', servidor: 'Railway' }));
 }
-// ==========================================
-// INICIALIZACIÓN PRINCIPAL
-// ==========================================
 const startServer = async () => {
   try {
     const { initModels } = require('./models/index.js');
