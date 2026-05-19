@@ -40,7 +40,6 @@ app.use(cors({
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Permite cualquier origen (para web, móvil, y Expo)
       callback(null, true);
     },
     credentials: true,
