@@ -5,6 +5,7 @@ const path = require('path');
 const app = express();
 const http = require('http');
 const { Server } = require('socket.io');
+const server = http.createServer(app);
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const PORT = process.env.PORT || 3001;
 
@@ -36,7 +37,6 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
-
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
